@@ -9,7 +9,7 @@ export async function GET() {
 
     let query = "";
     if (schema === "legacy") {
-      query = "SELECT user_id AS id, username, email, full_name, role, IF(is_active = 1, 'Active', 'Inactive') AS status, 'All' AS region, DATE_FORMAT(last_login_at, '%Y-%m-%d %H:%i:%s') as last_login FROM `users` ORDER BY user_id DESC";
+      query = "SELECT u.user_id AS id, u.username, u.email, u.full_name, r.role_name AS role, IF(u.is_active = 1, 'Active', 'Inactive') AS status, 'All' AS region, DATE_FORMAT(u.last_login_at, '%Y-%m-%d %H:%i:%s') as last_login FROM `users` u LEFT JOIN `roles` r ON u.role_id = r.role_id ORDER BY u.user_id DESC";
     } else {
       query = "SELECT id, username, email, full_name, role, status, region, DATE_FORMAT(last_login, '%Y-%m-%d %H:%i:%s') as last_login FROM `users` ORDER BY id DESC";
     }
@@ -77,9 +77,35 @@ export async function POST(req: NextRequest) {
     let result: any;
     if (schema === "legacy") {
       const isActiveVal = userStatus === "Active" ? 1 : 0;
+      
+      // Look up role_id dynamically, with static fallback mapping
+      let roleId = 8; // fallback to school_admin
+      try {
+        const [roleRows]: any = await db.query("SELECT role_id FROM `roles` WHERE `role_name` = ? AND `deleted_at` IS NULL", [role]);
+        if (roleRows && roleRows.length > 0) {
+          roleId = roleRows[0].role_id;
+        } else {
+          const roleIdMap: Record<string, number> = {
+            super_admin: 1,
+            region_admin: 2,
+            subregion_admin: 3,
+            school_head: 4,
+            data_entry_clerk: 5,
+            education_officer: 6,
+            report_viewer: 7,
+            school_admin: 8
+          };
+          if (roleIdMap[role]) {
+            roleId = roleIdMap[role];
+          }
+        }
+      } catch (roleErr) {
+        console.error("Error looking up role_id in user creation:", roleErr);
+      }
+
       [result] = await db.query(
-        "INSERT INTO `users` (`username`, `password_hash`, `email`, `full_name`, `role`, `is_active`) VALUES (?, ?, ?, ?, ?, ?)",
-        [username.trim(), hashed, email.trim(), full_name.trim(), role, isActiveVal]
+        "INSERT INTO `users` (`username`, `password_hash`, `email`, `full_name`, `role_id`, `is_active`) VALUES (?, ?, ?, ?, ?, ?)",
+        [username.trim(), hashed, email.trim(), full_name.trim(), roleId, isActiveVal]
       );
     } else {
       [result] = await db.query(
@@ -131,8 +157,36 @@ export async function PUT(req: NextRequest) {
       params.push(full_name.trim());
     }
     if (role !== undefined) {
-      updates.push("`role` = ?");
-      params.push(role);
+      if (schema === "legacy") {
+        let roleId = 8; // fallback to school_admin
+        try {
+          const [roleRows]: any = await db.query("SELECT role_id FROM `roles` WHERE `role_name` = ? AND `deleted_at` IS NULL", [role]);
+          if (roleRows && roleRows.length > 0) {
+            roleId = roleRows[0].role_id;
+          } else {
+            const roleIdMap: Record<string, number> = {
+              super_admin: 1,
+              region_admin: 2,
+              subregion_admin: 3,
+              school_head: 4,
+              data_entry_clerk: 5,
+              education_officer: 6,
+              report_viewer: 7,
+              school_admin: 8
+            };
+            if (roleIdMap[role]) {
+              roleId = roleIdMap[role];
+            }
+          }
+        } catch (roleErr) {
+          console.error("Error looking up role_id in user update:", roleErr);
+        }
+        updates.push("`role_id` = ?");
+        params.push(roleId);
+      } else {
+        updates.push("`role` = ?");
+        params.push(role);
+      }
     }
     if (region !== undefined) {
       updates.push("`region` = ?");

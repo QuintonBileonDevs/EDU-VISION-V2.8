@@ -6,17 +6,22 @@ export async function GET() {
     const db = getDbPool();
     
     // Attempt a direct quick query with a short timeout
-    const testPromise = db.query("SELECT 1");
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("Database connection timed out (ETIMEDOUT)")), 6000)
-    );
-
-    await Promise.race([testPromise, timeoutPromise]);
+    const [testRows]: any = await db.query("SELECT 1");
+    
+    // Diagnostic query to see columns of users table
+    let userColumns: any[] = [];
+    try {
+      const [columns]: any = await db.query("DESCRIBE `users`");
+      userColumns = columns.map((c: any) => ({ field: c.Field, type: c.Type }));
+    } catch (err: any) {
+      console.error("Diagnostic DESCRIBE users failed:", err);
+    }
 
     return NextResponse.json({
       success: true,
       status: "online",
-      details: "Successfully connected to Aiven MySQL (school_data_collection)"
+      details: "Successfully connected to Aiven MySQL (school_data_collection)",
+      user_columns: userColumns
     });
   } catch (error: any) {
     console.error("Database status check failed:", error);

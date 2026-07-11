@@ -105,6 +105,102 @@ export async function initializeDatabase() {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
   `);
 
+  // Create permissions table
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS \`permissions\` (
+      \`permission_id\` INT AUTO_INCREMENT PRIMARY KEY,
+      \`permission_name\` VARCHAR(100) UNIQUE NOT NULL,
+      \`permission_description\` VARCHAR(255),
+      \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      \`deleted_at\` TIMESTAMP NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `);
+
+  // Create role_permissions table
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS \`role_permissions\` (
+      \`role_permission_id\` INT AUTO_INCREMENT PRIMARY KEY,
+      \`role\` VARCHAR(100) NOT NULL,
+      \`permission_id\` INT NOT NULL,
+      \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      \`deleted_at\` TIMESTAMP NULL,
+      FOREIGN KEY (\`permission_id\`) REFERENCES \`permissions\` (\`permission_id\`) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `);
+
+  // Seed default permissions if table is empty
+  const [permCountRows]: any = await db.query("SELECT COUNT(*) as count FROM `permissions` WHERE deleted_at IS NULL");
+  const permCount = permCountRows[0]?.count || 0;
+  if (permCount === 0) {
+    const defaultPermissions = [
+      ["view_all_schools", "View all schools information across all regions"],
+      ["manage_all_schools", "Create, edit, or delete any school profile"],
+      ["view_region_schools", "View schools within assigned region"],
+      ["manage_region_schools", "Manage school profiles within assigned region"],
+      ["view_subregion_schools", "View schools within assigned sub-region"],
+      ["manage_subregion_schools", "Manage school profiles within assigned sub-region"],
+      ["view_own_school", "View profile and data for your own school"],
+      ["manage_own_school", "Manage profile and data for your own school"],
+      ["view_students", "View student records and information"],
+      ["manage_students", "Create, update, or remove student records"],
+      ["view_staff", "View teacher and staff records"],
+      ["manage_staff", "Manage teacher and staff profiles"],
+      ["view_inventory", "View school inventory and assets list"],
+      ["manage_inventory", "Update school inventory and assets list"],
+      ["view_reports", "Access, filter, and export data reports"],
+      ["manage_users", "Provision and manage system users and roles"],
+      ["view_audit_log", "View administrative audit trail and system activity logs"],
+      ["manage_policies", "Configure global education policies and rules"]
+    ];
+    await db.query("INSERT INTO `permissions` (`permission_name`, `permission_description`) VALUES ?", [defaultPermissions]);
+  }
+
+  // Seed default role_permissions if empty
+  const [rolePermCountRows]: any = await db.query("SELECT COUNT(*) as count FROM `role_permissions` WHERE deleted_at IS NULL");
+  const rolePermCount = rolePermCountRows[0]?.count || 0;
+  if (rolePermCount === 0) {
+    const [allPerms]: any = await db.query("SELECT permission_id, permission_name FROM `permissions` WHERE deleted_at IS NULL");
+    const permIdMap: Record<string, number> = {};
+    allPerms.forEach((p: any) => {
+      permIdMap[p.permission_name] = p.permission_id;
+    });
+
+    const defaultRolePerms: Record<string, string[]> = {
+      super_admin: ["view_all_schools", "manage_all_schools", "view_region_schools", "manage_region_schools", "view_subregion_schools", "manage_subregion_schools", "view_own_school", "manage_own_school", "view_students", "manage_students", "view_staff", "manage_staff", "view_inventory", "manage_inventory", "view_reports", "manage_users", "view_audit_log", "manage_policies"],
+      region_admin: ["view_region_schools", "manage_region_schools", "view_students", "manage_students", "view_staff", "manage_staff", "view_inventory", "manage_inventory", "view_reports"],
+      subregion_admin: ["view_subregion_schools", "manage_subregion_schools", "view_students", "manage_students", "view_staff", "manage_staff", "view_inventory", "manage_inventory"],
+      school_head: ["view_own_school", "manage_own_school", "view_students", "manage_students", "view_staff", "manage_staff", "view_inventory", "manage_inventory"],
+      school_admin: ["view_own_school", "view_students", "manage_students", "view_staff", "manage_staff", "view_inventory", "view_reports"],
+      data_entry_clerk: ["view_students", "manage_students", "view_staff", "manage_staff", "view_inventory"],
+      education_officer: ["view_all_schools", "view_students", "view_staff", "view_inventory", "view_reports"],
+      report_viewer: ["view_reports"]
+    };
+
+    // Fetch existing roles to map role_name to role_id
+    const [rolesRes]: any = await db.query("SELECT `role_id`, `role_name` FROM `roles` WHERE `deleted_at` IS NULL");
+    const roleIdMap: Record<string, number> = {};
+    rolesRes.forEach((r: any) => {
+      roleIdMap[r.role_name] = r.role_id;
+    });
+
+    const insertValues: any[] = [];
+    Object.entries(defaultRolePerms).forEach(([role, perms]) => {
+      const rId = roleIdMap[role];
+      if (rId) {
+        perms.forEach((pName) => {
+          const id = permIdMap[pName];
+          if (id) {
+            insertValues.push([role, id, rId]);
+          }
+        });
+      }
+    });
+
+    if (insertValues.length > 0) {
+      await db.query("INSERT INTO `role_permissions` (`role`, `permission_id`, `role_id`) VALUES ?", [insertValues]);
+    }
+  }
+
   const schema = await detectUsersSchema();
 
   // Handle super_admin upsert/update
@@ -124,8 +220,8 @@ export async function initializeDatabase() {
     console.log("Inserting super_admin...");
     if (schema === "legacy") {
       await db.query(
-        "INSERT INTO `users` (`username`, `password_hash`, `email`, `full_name`, `role`, `is_active`) VALUES (?, ?, ?, ?, ?, ?)",
-        ["super_admin", sha256("admin123"), "admin@schoolgov.com", "System Super Administrator", "super_admin", 1]
+        "INSERT INTO `users` (`username`, `password_hash`, `email`, `full_name`, `role_id`, `is_active`) VALUES (?, ?, ?, ?, ?, ?)",
+        ["super_admin", sha256("admin123"), "admin@schoolgov.com", "System Super Administrator", 1, 1]
       );
     } else {
       await db.query(
@@ -152,8 +248,8 @@ export async function initializeDatabase() {
     console.log("Inserting school_head...");
     if (schema === "legacy") {
       await db.query(
-        "INSERT INTO `users` (`username`, `password_hash`, `email`, `full_name`, `role`, `is_active`) VALUES (?, ?, ?, ?, ?, ?)",
-        ["school_head", sha256("school123"), "schoolhead@schoolgov.com", "School Head (Mogoditshane)", "school_head", 1]
+        "INSERT INTO `users` (`username`, `password_hash`, `email`, `full_name`, `role_id`, `is_active`) VALUES (?, ?, ?, ?, ?, ?)",
+        ["school_head", sha256("school123"), "schoolhead@schoolgov.com", "School Head (Mogoditshane)", 4, 1]
       );
     } else {
       await db.query(

@@ -56,8 +56,19 @@ import {
   AreaChart,
   Area
 } from "recharts";
-import confetti from "canvas-confetti";
 import { Logo } from "../components/Logo";
+
+// Helper to lazily import and trigger canvas-confetti on the client side safely
+const triggerConfetti = async (options?: any) => {
+  if (typeof window !== "undefined") {
+    try {
+      const { default: confetti } = await import("canvas-confetti");
+      confetti(options);
+    } catch (err) {
+      console.error("Failed to load canvas-confetti dynamically", err);
+    }
+  }
+};
 import { motion } from "motion/react";
 
 interface DbStatusResponse {
@@ -178,34 +189,21 @@ export default function Page() {
     "super_admin",
     "region_admin",
     "subregion_admin",
-    "school_head"
+    "school_head",
+    "data_entry_clerk",
+    "education_officer",
+    "report_viewer",
+    "school_admin"
   ]);
 
-  // Role Permissions State Management (persisted in localStorage)
-  const [rolePermissions, setRolePermissions] = useState<Record<string, string[]>>(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("emis_role_permissions");
-      if (saved) {
-        try {
-          return JSON.parse(saved);
-        } catch (e) {
-          // Fallback
-        }
-      }
-    }
-    return {
-      super_admin: ["read_registries", "write_registries", "approve_registries", "manage_users", "assign_roles", "configure_system", "force_sync", "export_reports"],
-      region_admin: ["read_registries", "write_registries", "approve_registries", "export_reports"],
-      subregion_admin: ["read_registries", "write_registries"],
-      school_head: ["read_registries", "write_registries"],
-      statistics_officer: ["read_registries", "approve_registries", "export_reports"],
-      district_officer: ["read_registries", "write_registries", "approve_registries"]
-    };
+  // Role Permissions State Management (Initialized with database defaults, synced dynamically)
+  const [rolePermissions, setRolePermissions] = useState<Record<string, string[]>>({
+    super_admin: ["view_all_schools", "manage_all_schools", "view_region_schools", "manage_region_schools", "view_subregion_schools", "manage_subregion_schools", "view_own_school", "manage_own_school", "view_students", "manage_students", "view_staff", "manage_staff", "view_inventory", "manage_inventory", "view_reports", "manage_users", "view_audit_log", "manage_policies"],
+    region_admin: ["view_region_schools", "manage_region_schools", "view_students", "manage_students", "view_staff", "manage_staff", "view_inventory", "manage_inventory", "view_reports"],
+    subregion_admin: ["view_subregion_schools", "manage_subregion_schools", "view_students", "manage_students", "view_staff", "manage_staff", "view_inventory", "manage_inventory"],
+    school_head: ["view_own_school", "manage_own_school", "view_students", "manage_students", "view_staff", "manage_staff", "view_inventory", "manage_inventory"],
+    school_admin: ["view_own_school", "view_students", "manage_students", "view_staff", "manage_staff", "view_inventory", "view_reports"]
   });
-
-  useEffect(() => {
-    localStorage.setItem("emis_role_permissions", JSON.stringify(rolePermissions));
-  }, [rolePermissions]);
 
   const [isCustomRoleModalOpen, setIsCustomRoleModalOpen] = useState(false);
   const [customRoleCode, setCustomRoleCode] = useState("");
@@ -316,16 +314,9 @@ export default function Page() {
         const fetchedUsers = data.users || [];
         setSystemUsers(fetchedUsers);
         
-        // Extract distinct roles from database users and merge with default ones
+        // Extract distinct roles from database users and merge with existing available roles
         const dbRoles = fetchedUsers.map((u: any) => u.role).filter(Boolean);
-        const uniqueRoles = Array.from(new Set([
-          "super_admin",
-          "region_admin",
-          "subregion_admin",
-          "school_head",
-          ...dbRoles
-        ]));
-        setAvailableRoles(uniqueRoles);
+        setAvailableRoles((prev) => Array.from(new Set([...prev, ...dbRoles])));
 
         // Extract distinct regions from database if available
         if (data.regions && data.regions.length > 0) {
@@ -339,8 +330,27 @@ export default function Page() {
     }
   }, [dbStatus]);
 
+  // Fetch role permissions from DB
+  const fetchRolePermissions = useCallback(async () => {
+    if (dbStatus !== "online") return;
+    try {
+      const res = await fetch("/api/roles");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.role_permissions) {
+          setRolePermissions(data.role_permissions);
+        }
+        if (data.roles) {
+          setAvailableRoles(data.roles);
+        }
+      }
+    } catch (e) {
+      console.error("Error fetching role permissions:", e);
+    }
+  }, [dbStatus]);
+
   // Save or update custom role and its permissions
-  const handleSaveCustomRole = (e: React.FormEvent) => {
+  const handleSaveCustomRole = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!customRoleCode.trim()) {
       alert("Role code is required.");
@@ -348,32 +358,46 @@ export default function Page() {
     }
     const roleCode = customRoleCode.trim().toLowerCase().replace(/[^a-z0-9_]/g, "");
     
-    // Register role in available roles list if it doesn't exist
-    if (!availableRoles.includes(roleCode)) {
-      setAvailableRoles((prev) => [...prev, roleCode]);
-    }
-    
-    // Save configured permissions mapping
-    setRolePermissions((prev) => ({
-      ...prev,
-      [roleCode]: customRolePerms
-    }));
-    
-    // Close modal
-    setIsCustomRoleModalOpen(false);
-    
-    // Execute dynamic callback to auto-assign this role to the pending user context
-    if (customRoleCallback) {
-      customRoleCallback(roleCode);
-    }
-    
-    if (typeof window !== "undefined") {
-      try {
-        // @ts-ignore
-        if (typeof confetti === "function") confetti({ particleCount: 30, spread: 40 });
-      } catch (err) {}
+    try {
+      const res = await fetch("/api/roles", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          role: roleCode,
+          permissions: customRolePerms
+        })
+      });
+      if (res.ok) {
+        // Register role in available roles list if it doesn't exist
+        if (!availableRoles.includes(roleCode)) {
+          setAvailableRoles((prev) => [...prev, roleCode]);
+        }
+        
+        // Save configured permissions mapping locally
+        setRolePermissions((prev) => ({
+          ...prev,
+          [roleCode]: customRolePerms
+        }));
+        
+        // Close modal
+        setIsCustomRoleModalOpen(false);
+        
+        // Execute dynamic callback to auto-assign this role to the pending user context
+        if (customRoleCallback) {
+          customRoleCallback(roleCode);
+        }
+        
+        triggerConfetti({ particleCount: 30, spread: 40 });
+      } else {
+        const errData = await res.json();
+        alert("Failed to save role permissions: " + (errData.error || "Unknown error"));
+      }
+    } catch (e) {
+      console.error("Error saving custom role:", e);
+      alert("Network error while saving custom role.");
     }
   };
+
 
   // Create a new administrative user
   const handleCreateUser = async (e: React.FormEvent) => {
@@ -399,7 +423,7 @@ export default function Page() {
           status: "Active"
         });
         fetchSystemUsers();
-        confetti({ particleCount: 40, spread: 50 });
+        triggerConfetti({ particleCount: 40, spread: 50 });
       } else {
         const errData = await res.json();
         alert("Failed to provision user: " + (errData.error || "Unknown database error"));
@@ -511,7 +535,7 @@ export default function Page() {
           localStorage.removeItem("edu_vision_remembered_username");
           localStorage.removeItem("edu_vision_remember");
         }
-        confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+        triggerConfetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
       }
     } catch (err) {
       setAuthError("Could not connect to the authentication server.");
@@ -542,7 +566,7 @@ export default function Page() {
         setForgotPasswordError("Please enter a valid email address.");
       } else {
         setForgotPasswordSuccess(true);
-        confetti({ particleCount: 50, spread: 60, origin: { y: 0.6 } });
+        triggerConfetti({ particleCount: 50, spread: 60, origin: { y: 0.6 } });
       }
     } catch (err) {
       setForgotPasswordError("Could not reach authentication server. Please try again.");
@@ -581,7 +605,7 @@ export default function Page() {
         if (user?.role === "super_admin") {
           fetchAllRecords();
         }
-        confetti({ particleCount: 30, spread: 50 });
+        triggerConfetti({ particleCount: 30, spread: 50 });
       } else {
         const errData = await res.json();
         alert("Failed to insert record: " + (errData.error || "Unknown database error"));
@@ -652,8 +676,9 @@ export default function Page() {
         fetchAllRecords();
         fetchSystemUsers();
       }
+      fetchRolePermissions();
     }
-  }, [activeTab, dbStatus, user, fetchRecords, fetchAllRecords, fetchSystemUsers]);
+  }, [activeTab, dbStatus, user, fetchRecords, fetchAllRecords, fetchSystemUsers, fetchRolePermissions]);
 
   // Set default form values when tab changes
   useEffect(() => {
@@ -1822,7 +1847,7 @@ export default function Page() {
                     <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">System Role</label>
                     <div className="flex items-center gap-1.5">
                       <select
-                        className="w-full px-2.5 py-2 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-slate-900 dark:focus:ring-slate-700 cursor-pointer"
+                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 dark:focus:border-indigo-400 transition-all duration-200 cursor-pointer font-medium shadow-sm hover:border-slate-300 dark:hover:border-slate-700"
                         value={newUserForm.role}
                         onChange={(e) => {
                           if (e.target.value === "__NEW_ROLE__") {
@@ -2175,20 +2200,24 @@ export default function Page() {
               {/* Permissions Checklists */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">
-                  Assign System Permissions
+                  Assign System Permissions (Database Defined)
                 </label>
-                <div className="space-y-3 max-h-[220px] overflow-y-auto pr-1 border border-slate-100 dark:border-slate-800/80 rounded-lg p-3 bg-slate-50/50 dark:bg-slate-950/40">
-                  {/* Category: School Registries */}
+                <div className="space-y-4 max-h-[280px] overflow-y-auto pr-1 border border-slate-100 dark:border-slate-800/80 rounded-lg p-3 bg-slate-50/50 dark:bg-slate-950/40">
+                  {/* Category 1 */}
                   <div className="space-y-2">
                     <span className="text-[10px] font-bold tracking-wider text-slate-400 uppercase">
-                      School Registries Operations
+                      School & Directory Access
                     </span>
-                    <div className="grid grid-cols-1 gap-2">
+                    <div className="grid grid-cols-1 gap-1.5">
                       {[
-                        { id: "read_registries", name: "Read Registries", desc: "View rosters, national stats, and general dashboards" },
-                        { id: "write_registries", name: "Write Registries", desc: "Submit, amend, and delete school record cards" },
-                        { id: "approve_registries", name: "Approve Registries", desc: "Officially verify and freeze collected EMIS data" },
-                        { id: "export_reports", name: "Export Reports", desc: "Export statistical compilations to Excel / PDF" }
+                        { id: "view_all_schools", name: "View All Schools", desc: "Can view all schools in the system" },
+                        { id: "manage_all_schools", name: "Manage All Schools", desc: "Can create, update, and delete all schools" },
+                        { id: "view_region_schools", name: "View Region Schools", desc: "Can view schools within their region" },
+                        { id: "manage_region_schools", name: "Manage Region Schools", desc: "Can manage schools within their region" },
+                        { id: "view_subregion_schools", name: "View Subregion Schools", desc: "Can view schools within their sub-region" },
+                        { id: "manage_subregion_schools", name: "Manage Subregion Schools", desc: "Can manage schools within their sub-region" },
+                        { id: "view_own_school", name: "View Own School", desc: "Can view their own school data" },
+                        { id: "manage_own_school", name: "Manage Own School", desc: "Can manage their own school data" }
                       ].map((perm) => (
                         <label key={perm.id} className="flex items-start gap-2.5 p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition cursor-pointer">
                           <input
@@ -2212,17 +2241,53 @@ export default function Page() {
                     </div>
                   </div>
 
-                  {/* Category: Administrative Controls */}
+                  {/* Category 2 */}
                   <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                     <span className="text-[10px] font-bold tracking-wider text-slate-400 uppercase">
-                      Administrative Governance
+                      Core Record Registries
                     </span>
-                    <div className="grid grid-cols-1 gap-2">
+                    <div className="grid grid-cols-1 gap-1.5">
                       {[
+                        { id: "view_students", name: "View Students", desc: "Can view student records" },
+                        { id: "manage_students", name: "Manage Students", desc: "Can create, update, and delete student records" },
+                        { id: "view_staff", name: "View Staff", desc: "Can view educational staff records" },
+                        { id: "manage_staff", name: "Manage Staff", desc: "Can create, update, and delete staff records" },
+                        { id: "view_inventory", name: "View Inventory", desc: "Can view physical assets, textbooks, and recreation setups" },
+                        { id: "manage_inventory", name: "Manage Inventory", desc: "Can create, update, and delete inventory records" }
+                      ].map((perm) => (
+                        <label key={perm.id} className="flex items-start gap-2.5 p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition cursor-pointer">
+                          <input
+                            type="checkbox"
+                            className="mt-0.5 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 dark:border-slate-700"
+                            checked={customRolePerms.includes(perm.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setCustomRolePerms((prev) => [...prev, perm.id]);
+                              } else {
+                                setCustomRolePerms((prev) => prev.filter(x => x !== perm.id));
+                              }
+                            }}
+                          />
+                          <div>
+                            <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 block">{perm.name}</span>
+                            <span className="text-[10px] text-slate-400 leading-snug block">{perm.desc}</span>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Category 3 */}
+                  <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                    <span className="text-[10px] font-bold tracking-wider text-slate-400 uppercase">
+                      Administrative & Governance
+                    </span>
+                    <div className="grid grid-cols-1 gap-1.5">
+                      {[
+                        { id: "view_reports", name: "View Reports", desc: "Can view system aggregate stats and national visual report cards" },
                         { id: "manage_users", name: "Manage Administrative Operators", desc: "Provision, lock, or erase system user accounts" },
-                        { id: "assign_roles", name: "Configure Roles & Scopes", desc: "Assign custom roles and security region perimeters" },
-                        { id: "configure_system", name: "Manage Integrations & DB", desc: "Access primary DB setups and schema sync scripts" },
-                        { id: "force_sync", name: "Initiate Synchronization Tasks", desc: "Force complete table rebuilds & external fetches" }
+                        { id: "view_audit_log", name: "View Audit Logs", desc: "Can view database access, insert, and update logs" },
+                        { id: "manage_policies", name: "Manage System Policies", desc: "Can manage general system configurations, synchronization rules, and database schema status" }
                       ].map((perm) => (
                         <label key={perm.id} className="flex items-start gap-2.5 p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition cursor-pointer">
                           <input

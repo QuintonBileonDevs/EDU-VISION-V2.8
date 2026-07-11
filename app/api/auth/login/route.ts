@@ -22,7 +22,21 @@ export async function POST(req: NextRequest) {
     
     let query = "";
     if (schema === "legacy") {
-      query = "SELECT user_id AS id, username, password_hash, email, full_name, role, IF(is_active = 1, 'Active', 'Inactive') AS status, 'All' AS region FROM `users` WHERE LOWER(username) = ? OR LOWER(email) = ?";
+      // CORRECTED QUERY - Uses role_id with JOIN to roles table
+      query = `
+        SELECT 
+          u.user_id AS id, 
+          u.username, 
+          u.password_hash, 
+          u.email, 
+          u.full_name, 
+          r.role_name AS role, 
+          IF(u.is_active = 1, 'Active', 'Inactive') AS status, 
+          'All' AS region 
+        FROM users u 
+        LEFT JOIN roles r ON u.role_id = r.role_id 
+        WHERE LOWER(u.username) = ? OR LOWER(u.email) = ?
+      `;
     } else {
       query = "SELECT id, username, password_hash, email, full_name, role, status, region FROM `users` WHERE LOWER(username) = ? OR LOWER(email) = ?";
     }
