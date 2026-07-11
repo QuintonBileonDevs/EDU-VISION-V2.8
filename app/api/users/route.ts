@@ -1,20 +1,137 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDbPool, initializeDatabase, sha256, detectUsersSchema } from "@/lib/db";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const { searchParams } = new URL(req.url);
+    const page = parseInt(searchParams.get("page") || "1", 10);
+    const limit = parseInt(searchParams.get("limit") || "10", 10);
+    const search = searchParams.get("search") || "";
+    const role = searchParams.get("role") || "";
+    const status = searchParams.get("status") || "all";
+    const sortBy = searchParams.get("sortBy") || "username";
+    const sortOrder = searchParams.get("sortOrder") || "asc";
+
+    const offset = (page - 1) * limit;
+
     await initializeDatabase();
     const db = getDbPool();
     const schema = await detectUsersSchema();
 
     let query = "";
-    if (schema === "legacy") {
-      query = "SELECT u.user_id AS id, u.username, u.email, u.full_name, r.role_name AS role, IF(u.is_active = 1, 'Active', 'Inactive') AS status, 'All' AS region, DATE_FORMAT(u.last_login_at, '%Y-%m-%d %H:%i:%s') as last_login FROM `users` u LEFT JOIN `roles` r ON u.role_id = r.role_id ORDER BY u.user_id DESC";
-    } else {
-      query = "SELECT id, username, email, full_name, role, status, region, DATE_FORMAT(last_login, '%Y-%m-%d %H:%i:%s') as last_login FROM `users` ORDER BY id DESC";
+    let countQuery = "";
+    const whereClauses: string[] = [];
+    const params: any[] = [];
+
+    // Search filter
+    if (search) {
+      if (schema === "legacy") {
+        whereClauses.push("(u.username LIKE ? OR u.email LIKE ? OR u.full_name LIKE ?)");
+      } else {
+        whereClauses.push("(username LIKE ? OR email LIKE ? OR full_name LIKE ?)");
+      }
+      const likeParam = `%${search}%`;
+      params.push(likeParam, likeParam, likeParam);
     }
 
-    const [rows]: any = await db.query(query);
+    // Role filter
+    if (role && role !== "all") {
+      if (schema === "legacy") {
+        whereClauses.push("r.role_name = ?");
+      } else {
+        whereClauses.push("role = ?");
+      }
+      params.push(role);
+    }
+
+    // Status / Deleted filter
+    if (status === "deleted") {
+      if (schema === "legacy") {
+        whereClauses.push("u.deleted_at IS NOT NULL");
+      } else {
+        whereClauses.push("deleted_at IS NOT NULL");
+      }
+    } else {
+      // By default, exclude soft-deleted users
+      if (schema === "legacy") {
+        whereClauses.push("u.deleted_at IS NULL");
+      } else {
+        whereClauses.push("deleted_at IS NULL");
+      }
+
+      if (status === "active") {
+        if (schema === "legacy") {
+          whereClauses.push("u.is_active = 1");
+        } else {
+          whereClauses.push("status = 'Active'");
+        }
+      } else if (status === "inactive") {
+        if (schema === "legacy") {
+          whereClauses.push("u.is_active = 0");
+        } else {
+          whereClauses.push("status = 'Inactive'");
+        }
+      }
+    }
+
+    const whereStr = whereClauses.length > 0 ? "WHERE " + whereClauses.join(" AND ") : "";
+
+    // Validate and sanitize order by columns to prevent SQL injection
+    const allowedSortCols = ["username", "email", "full_name", "role", "status", "id", "user_id"];
+    const sortCol = allowedSortCols.includes(sortBy) ? sortBy : "username";
+    const orderDir = sortOrder.toLowerCase() === "desc" ? "DESC" : "ASC";
+
+    let orderByStr = "";
+    if (schema === "legacy") {
+      const orderColMapped = sortCol === "id" ? "u.user_id" : (sortCol === "role" ? "r.role_name" : `u.${sortCol}`);
+      orderByStr = `ORDER BY ${orderColMapped} ${orderDir}`;
+    } else {
+      orderByStr = `ORDER BY ${sortCol} ${orderDir}`;
+    }
+
+    if (schema === "legacy") {
+      query = `
+        SELECT u.user_id AS id, u.username, u.email, u.full_name, u.phone_number,
+               r.role_name AS role, r.role_display_name, IF(u.is_active = 1, 'Active', 'Inactive') AS status,
+               u.is_active, 'All' AS region, DATE_FORMAT(u.last_login_at, '%Y-%m-%d %H:%i:%s') as last_login,
+               u.created_at, u.deleted_at
+        FROM \`users\` u
+        LEFT JOIN \`roles\` r ON u.role_id = r.role_id
+        ${whereStr}
+        ${orderByStr}
+        LIMIT ? OFFSET ?
+      `;
+      countQuery = `
+        SELECT COUNT(*) as count
+        FROM \`users\` u
+        LEFT JOIN \`roles\` r ON u.role_id = r.role_id
+        ${whereStr}
+      `;
+    } else {
+      query = `
+        SELECT id, username, email, full_name, role, status, region, 
+               DATE_FORMAT(last_login, '%Y-%m-%d %H:%i:%s') as last_login, created_at, deleted_at
+        FROM \`users\`
+        ${whereStr}
+        ${orderByStr}
+        LIMIT ? OFFSET ?
+      `;
+      countQuery = `
+        SELECT COUNT(*) as count
+        FROM \`users\`
+        ${whereStr}
+      `;
+    }
+
+    // Run queries
+    const countParams = [...params];
+    const selectParams = [...params, limit, offset];
+
+    const [countRows]: any = await db.query(countQuery, countParams);
+    const total = countRows[0]?.count || 0;
+    const totalPages = Math.ceil(total / limit);
+
+    const [rows]: any = await db.query(query, selectParams);
 
     // Fetch actual regions from reference_data table in the database
     let regions: string[] = ["Central", "Chobe", "Gantsi", "Kgalagadi", "Kgatleng", "Kweneng", "North East", "North West", "South", "South East"];
@@ -27,7 +144,18 @@ export async function GET() {
       console.error("Error fetching regions from reference_data:", refErr);
     }
 
-    return NextResponse.json({ success: true, db_status: "online", users: rows, regions });
+    return NextResponse.json({
+      success: true,
+      db_status: "online",
+      users: rows,
+      regions,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages
+      }
+    });
   } catch (error: any) {
     console.error("GET users error:", error);
     return NextResponse.json(

@@ -258,5 +258,177 @@ export async function initializeDatabase() {
       );
     }
   }
+
+  // Create ip_whitelist table
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS \`ip_whitelist\` (
+      \`whitelist_id\` INT AUTO_INCREMENT PRIMARY KEY,
+      \`ip_address\` VARCHAR(50) NOT NULL,
+      \`description\` VARCHAR(255),
+      \`created_by_user_id\` INT,
+      \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      \`deleted_at\` TIMESTAMP NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `);
+
+  // Create user_sessions table
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS \`user_sessions\` (
+      \`session_id\` INT AUTO_INCREMENT PRIMARY KEY,
+      \`user_id\` INT NOT NULL,
+      \`ip_address\` VARCHAR(50),
+      \`user_agent\` TEXT,
+      \`login_time\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      \`expiry_time\` TIMESTAMP,
+      \`last_activity_time\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      \`is_active\` TINYINT(1) DEFAULT 1,
+      \`deleted_at\` TIMESTAMP NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `);
+
+  // Create security_alerts table
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS \`security_alerts\` (
+      \`alert_id\` INT AUTO_INCREMENT PRIMARY KEY,
+      \`alert_type\` VARCHAR(100) NOT NULL,
+      \`alert_message\` TEXT,
+      \`severity\` VARCHAR(20) DEFAULT 'MEDIUM',
+      \`ip_address\` VARCHAR(50),
+      \`user_id\` INT,
+      \`is_resolved\` TINYINT(1) DEFAULT 0,
+      \`resolved_at\` TIMESTAMP NULL,
+      \`resolved_by_user_id\` INT,
+      \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      \`deleted_at\` TIMESTAMP NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `);
+
+  // Create system_config table
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS \`system_config\` (
+      \`config_id\` INT AUTO_INCREMENT PRIMARY KEY,
+      \`config_key\` VARCHAR(100) UNIQUE NOT NULL,
+      \`config_value\` TEXT,
+      \`config_group\` VARCHAR(50) DEFAULT 'general',
+      \`description\` TEXT,
+      \`is_editable\` TINYINT(1) DEFAULT 1,
+      \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      \`updated_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      \`deleted_at\` TIMESTAMP NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `);
+
+  // Create system_error_logs table
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS \`system_error_logs\` (
+      \`error_id\` INT AUTO_INCREMENT PRIMARY KEY,
+      \`error_message\` TEXT NOT NULL,
+      \`error_stack\` TEXT,
+      \`severity\` VARCHAR(20) DEFAULT 'ERROR',
+      \`user_id\` INT,
+      \`request_url\` VARCHAR(255),
+      \`request_method\` VARCHAR(10),
+      \`error_file\` VARCHAR(255),
+      \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      \`resolved_at\` TIMESTAMP NULL,
+      \`deleted_at\` TIMESTAMP NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `);
+
+  // Create system_health_metrics table
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS \`system_health_metrics\` (
+      \`metric_id\` INT AUTO_INCREMENT PRIMARY KEY,
+      \`metric_name\` VARCHAR(100) NOT NULL,
+      \`metric_value\` VARCHAR(255),
+      \`recorded_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      \`deleted_at\` TIMESTAMP NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `);
+
+  // Create system_backups table
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS \`system_backups\` (
+      \`backup_id\` INT AUTO_INCREMENT PRIMARY KEY,
+      \`backup_name\` VARCHAR(255) NOT NULL,
+      \`backup_type\` VARCHAR(50) DEFAULT 'FULL',
+      \`backup_file_path\` VARCHAR(255),
+      \`backup_status\` VARCHAR(50) DEFAULT 'PENDING',
+      \`created_by_user_id\` INT,
+      \`backup_started_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      \`backup_completed_at\` TIMESTAMP NULL,
+      \`deleted_at\` TIMESTAMP NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `);
+
+  // Seed system_config if empty
+  const [configCountRows]: any = await db.query("SELECT COUNT(*) as count FROM `system_config` WHERE deleted_at IS NULL");
+  const configCount = configCountRows[0]?.count || 0;
+  if (configCount === 0) {
+    const defaultConfig = [
+      ['MAINTENANCE_MODE', 'FALSE', 'general', 'Enable or disable maintenance mode', 1],
+      ['MAX_LOGIN_ATTEMPTS', '5', 'security', 'Maximum failed logins', 1],
+      ['SESSION_TIMEOUT_MINS', '60', 'security', 'Session timeout in minutes', 1],
+      ['SYSTEM_TIMEZONE', 'Africa/Gaborone', 'general', 'System default timezone', 0],
+      ['ALLOW_SELF_REGISTRATION', 'FALSE', 'general', 'Enable school self registration', 1]
+    ];
+    await db.query("INSERT INTO `system_config` (`config_key`, `config_value`, `config_group`, \`description\`, \`is_editable\`) VALUES ?", [defaultConfig]);
+  }
+
+  // Seed system_health_metrics if empty
+  const [healthCountRows]: any = await db.query("SELECT COUNT(*) as count FROM \`system_health_metrics\` WHERE deleted_at IS NULL");
+  if (healthCountRows[0]?.count === 0) {
+    const defaultMetrics = [
+      ['uptime', '99.95'],
+      ['db_latency', '12'],
+      ['storage_used', '45.2'],
+      ['api_response_avg', '156']
+    ];
+    await db.query("INSERT INTO \`system_health_metrics\` (\`metric_name\`, \`metric_value\`) VALUES ?", [defaultMetrics]);
+  }
+
+  // Ensure granular user management permissions exist and are mapped to super_admin
+  const requiredPermissions = [
+    ["LOCK_USER", "Lock or suspend system user accounts"],
+    ["UNLOCK_USER", "Unlock or reactivate suspended user accounts"],
+    ["DELETE_USER", "Soft delete system user accounts"],
+    ["RESTORE_USER", "Restore soft-deleted user accounts"],
+    ["EXPORT_USERS", "Export system user data"],
+    ["IMPORT_USERS", "Import system users from files"],
+    ["RESET_PASSWORD", "Reset password for system user accounts"],
+    ["VIEW_USER_DETAILS", "View detailed user profile and information"],
+    ["UPDATE_USER", "Edit or update system user details"],
+    ["FORCE_PASSWORD_CHANGE", "Force system users to change password on next login"],
+    ["VIEW_USER_LIST", "View list of system administrative users"]
+  ];
+
+  for (const [pName, pDesc] of requiredPermissions) {
+    const [exists]: any = await db.query("SELECT permission_id FROM `permissions` WHERE `permission_name` = ?", [pName]);
+    let pId: number;
+    if (!exists || exists.length === 0) {
+      const [insertRes]: any = await db.query(
+        "INSERT INTO `permissions` (`permission_name`, `permission_description`) VALUES (?, ?)",
+        [pName, pDesc]
+      );
+      pId = insertRes.insertId;
+    } else {
+      pId = exists[0].permission_id;
+    }
+
+    // Map to super_admin if not already mapped
+    const [mapExists]: any = await db.query(
+      "SELECT role_permission_id FROM `role_permissions` WHERE `role` = 'super_admin' AND `permission_id` = ?",
+      [pId]
+    );
+    if (!mapExists || mapExists.length === 0) {
+      const [superRole]: any = await db.query("SELECT role_id FROM `roles` WHERE `role_name` = 'super_admin' AND `deleted_at` IS NULL");
+      const rId = superRole && superRole.length > 0 ? superRole[0].role_id : 1;
+      await db.query(
+        "INSERT INTO `role_permissions` (`role`, `permission_id`, `role_id`) VALUES (?, ?, ?)",
+        ["super_admin", pId, rId]
+      );
+    }
+  }
+
   console.log("Seeding and validation of default accounts complete.");
 }

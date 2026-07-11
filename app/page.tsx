@@ -1,6 +1,17 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import UsersTable from "@/components/UsersTable";
+import {
+  SuperAdminInsights,
+  SuperAdminConfig,
+  SuperAdminData,
+  SuperAdminReference,
+  SuperAdminAcademic,
+  SuperAdminRegions,
+  SuperAdminSecurity,
+  SuperAdminHealth
+} from "@/components/SuperAdminTabs";
 import { 
   Database, 
   RefreshCw, 
@@ -28,7 +39,7 @@ import {
   X,
   Shield,
   ShieldCheck,
-  Activity,
+  Activity, ActivitySquare,
   UserCheck,
   UserX,
   Settings,
@@ -37,7 +48,15 @@ import {
   Briefcase,
   Key,
   Sun,
-  Moon
+  Moon,
+  FileText,
+  Map,
+  ShieldAlert,
+  Server,
+  Download,
+  Upload,
+  List,
+  AlertCircle
 } from "lucide-react";
 import {
   BarChart,
@@ -165,7 +184,7 @@ export default function Page() {
   const [forgotPasswordError, setForgotPasswordError] = useState("");
 
   // Super Admin specific state variables
-  const [superTab, setSuperTab] = useState<"insights" | "registries" | "users">("insights");
+  const [superTab, setSuperTab] = useState<"insights" | "users" | "config" | "data" | "reference" | "academic" | "regions" | "security" | "health">("insights");
   const [allRecords, setAllRecords] = useState<RegistryRecord[]>([]);
   const [allRecordsLoading, setAllRecordsLoading] = useState(false);
   const [systemUsers, setSystemUsers] = useState<any[]>([]);
@@ -1094,8 +1113,14 @@ export default function Page() {
           <div className="flex flex-wrap gap-1.5">
             {[
               { id: "insights", label: "National EMIS Insights", icon: Activity },
-              { id: "registries", label: "Connected Registries", icon: Database },
-              { id: "users", label: "System Access Control", icon: Shield }
+              { id: "users", label: "User & Access Management", icon: Users },
+              { id: "config", label: "System Configuration", icon: Settings },
+              { id: "data", label: "Data Management", icon: Database },
+              { id: "reference", label: "Reference Data Management", icon: FileText },
+              { id: "academic", label: "Academic Management", icon: GraduationCap },
+              { id: "regions", label: "School & Region Management", icon: Map },
+              { id: "security", label: "Security & Monitoring", icon: ShieldAlert },
+              { id: "health", label: "System Health", icon: ActivitySquare }
             ].map((tab) => {
               const Icon = tab.icon;
               const isSelected = superTab === tab.id;
@@ -1559,234 +1584,11 @@ export default function Page() {
         </div>
       </main>
       ) : superTab === "insights" ? (
-        <main className="flex-1 max-w-7xl w-full mx-auto p-6 space-y-6">
-          {/* Analytics Summary Header Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 animate-fadeIn">
-            {[
-              { label: "Total Students", count: allRecords.filter(r => r.type === "students").length, color: "border-indigo-500 text-indigo-600 dark:text-indigo-400 bg-indigo-50/30 dark:bg-indigo-950/20", icon: GraduationCap },
-              { label: "Active Teachers", count: allRecords.filter(r => r.type === "teachers").length, color: "border-emerald-500 text-emerald-600 dark:text-emerald-400 bg-emerald-50/30 dark:bg-emerald-950/20", icon: Users },
-              { label: "Tracked Dropouts", count: allRecords.filter(r => r.type === "dropouts").length, color: "border-rose-500 text-rose-600 dark:text-rose-400 bg-rose-50/30 dark:bg-rose-950/20", icon: UserMinus },
-              { label: "School Transfers", count: allRecords.filter(r => r.type === "transfers").length, color: "border-amber-500 text-amber-600 dark:text-amber-400 bg-amber-50/30 dark:bg-amber-950/20", icon: ArrowLeftRight },
-              { label: "System Admins", count: systemUsers.length, color: "border-[#00a8cc] text-[#00a8cc] bg-cyan-50/20 dark:bg-cyan-950/20", icon: Shield }
-            ].map((kpi, i) => {
-              const Icon = kpi.icon;
-              return (
-                <div key={i} className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between hover:shadow-md transition duration-200">
-                  <div className="space-y-1">
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{kpi.label}</span>
-                    <h3 className="text-2xl font-extrabold text-slate-950 dark:text-slate-100">{kpi.count}</h3>
-                  </div>
-                  <div className={`p-2.5 rounded-lg border ${kpi.color}`}>
-                    <Icon className="h-5 w-5" />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Recharts Analytics Section */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fadeIn">
-            {/* Left Chart: Region distribution */}
-            <div className="lg:col-span-2 bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm transition-colors duration-200">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 font-sans">National EMIS Registration by Region</h3>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400">Live dataset cross-tabulation across geographic regions of Botswana</p>
-                </div>
-                <div className="flex items-center gap-1.5 text-[10px] text-slate-500 dark:text-slate-400 font-mono bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-2 py-0.5 rounded">
-                  <Activity className="h-3 w-3 text-emerald-500" />
-                  Realtime MySQL
-                </div>
-              </div>
-              
-              <div className="h-72 w-full text-xs">
-                {allRecords.length === 0 ? (
-                  <div className="h-full flex items-center justify-center text-slate-400 dark:text-slate-500">
-                    No registry data available to generate charts.
-                  </div>
-                ) : (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      data={["South", "Central", "North", "West"].map(reg => ({
-                        name: reg,
-                        Students: allRecords.filter(r => r.region === reg && r.type === "students").length,
-                        Teachers: allRecords.filter(r => r.region === reg && r.type === "teachers").length,
-                        Dropouts: allRecords.filter(r => r.region === reg && r.type === "dropouts").length,
-                        Transfers: allRecords.filter(r => r.region === reg && r.type === "transfers").length,
-                      }))}
-                      margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={theme === "light" ? "#f1f5f9" : "#1e293b"} />
-                      <XAxis dataKey="name" stroke="#94a3b8" fontSize={11} />
-                      <YAxis stroke="#94a3b8" fontSize={11} />
-                      <Tooltip 
-                        contentStyle={{ backgroundColor: "#0f172a", borderRadius: "8px", color: "#fff", border: "none" }}
-                        labelStyle={{ fontWeight: "bold" }}
-                      />
-                      <Legend verticalAlign="top" height={36} iconType="circle" />
-                      <Bar dataKey="Students" fill="#6366f1" radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="Teachers" fill="#10b981" radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="Dropouts" fill="#f43f5e" radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="Transfers" fill="#f59e0b" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                )}
-              </div>
-            </div>
-
-            {/* Right Chart: Dropout reasons */}
-            <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm transition-colors duration-200">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 font-sans">Dropout Proportional Reasons</h3>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400">Breakdown of tracked academic dropouts</p>
-                </div>
-              </div>
-
-              <div className="h-72 w-full flex flex-col justify-between text-xs">
-                {allRecords.filter(r => r.type === "dropouts").length === 0 ? (
-                  <div className="h-full flex items-center justify-center text-slate-400 dark:text-slate-500">
-                    No dropout records found to analyze.
-                  </div>
-                ) : (
-                  <>
-                    <div className="h-44 w-full">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <RechartsPieChart>
-                          <Pie
-                            data={["Financial", "Relocation", "Health", "Academic", "Employment"].map(reason => {
-                              const count = allRecords.filter(r => r.type === "dropouts" && r.record_data?.reason === reason).length;
-                              return { name: reason, value: count };
-                            }).filter(item => item.value > 0)}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={50}
-                            outerRadius={70}
-                            paddingAngle={4}
-                            dataKey="value"
-                          >
-                            {[
-                              { name: "Financial", color: "#f43f5e" },
-                              { name: "Relocation", color: "#3b82f6" },
-                              { name: "Health", color: "#10b981" },
-                              { name: "Academic", color: "#a855f7" },
-                              { name: "Employment", color: "#f59e0b" }
-                            ].map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry.color} />
-                            ))}
-                          </Pie>
-                          <Tooltip contentStyle={{ backgroundColor: "#0f172a", borderRadius: "8px", color: "#fff", border: "none" }} />
-                        </RechartsPieChart>
-                      </ResponsiveContainer>
-                    </div>
-
-                    <div className="space-y-1.5 border-t border-slate-100 dark:border-slate-800 pt-3">
-                      {[
-                        { name: "Financial Hardship", color: "bg-rose-500", key: "Financial" },
-                        { name: "Family Relocation", color: "bg-blue-500", key: "Relocation" },
-                        { name: "Medical / Health", color: "bg-emerald-500", key: "Health" },
-                        { name: "Academic performance", color: "bg-purple-500", key: "Academic" },
-                        { name: "Early Employment", color: "bg-amber-500", key: "Employment" }
-                      ].map((reason, i) => {
-                        const count = allRecords.filter(r => r.type === "dropouts" && r.record_data?.reason === reason.key).length;
-                        const percentage = allRecords.filter(r => r.type === "dropouts").length > 0 
-                          ? Math.round((count / allRecords.filter(r => r.type === "dropouts").length) * 100) 
-                          : 0;
-                        return (
-                          <div key={i} className="flex items-center justify-between text-[11px] text-slate-600 dark:text-slate-400">
-                            <div className="flex items-center gap-1.5">
-                              <span className={`h-2.5 w-2.5 rounded-full ${reason.color}`}></span>
-                              <span>{reason.name}</span>
-                            </div>
-                            <span className="font-semibold text-slate-800 dark:text-slate-200">{count} ({percentage}%)</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Recent Database Activity Feed */}
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden animate-fadeIn transition-colors duration-200">
-            <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-950/20">
-              <h3 className="font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2 text-sm font-sans">
-                <Database className="h-4 w-4 text-slate-400" />
-                Live Database Audit Feed: All Registered Records
-              </h3>
-              <span className="text-xs font-mono text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-full border border-slate-200 dark:border-slate-700">
-                {allRecords.length} records in registries table
-              </span>
-            </div>
-
-            {allRecordsLoading ? (
-              <div className="py-12 text-center text-slate-500 dark:text-slate-400 flex flex-col items-center gap-2">
-                <RefreshCw className="h-6 w-6 animate-spin text-slate-400" />
-                <span className="text-xs">Querying registries across all tables...</span>
-              </div>
-            ) : allRecords.length === 0 ? (
-              <div className="py-12 text-center text-slate-500 dark:text-slate-400">
-                No database rows are registered yet.
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="bg-slate-100 dark:bg-slate-950 text-slate-600 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800/80">
-                      <th className="px-6 py-3 font-semibold uppercase tracking-wider">Type</th>
-                      <th className="px-6 py-3 font-semibold uppercase tracking-wider">School & Region</th>
-                      <th className="px-6 py-3 font-semibold uppercase tracking-wider">Details</th>
-                      <th className="px-6 py-3 font-semibold uppercase tracking-wider">Date Registered</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
-                    {allRecords.slice(0, 8).map((record) => (
-                      <tr key={record.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                            record.type === "students" ? "bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/40" :
-                            record.type === "teachers" ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/40" :
-                            record.type === "dropouts" ? "bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 border border-rose-100 dark:border-rose-900/40" :
-                            "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-100 dark:border-amber-900/40"
-                          }`}>
-                            {record.type}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className="font-semibold text-slate-900 dark:text-slate-100 block">{record.school_name}</span>
-                          <span className="text-[10px] text-slate-500 dark:text-slate-400">{record.region} Region</span>
-                        </td>
-                        <td className="px-6 py-4 text-slate-700 dark:text-slate-300">
-                          {record.type === "students" && (
-                            <span>Student: <b className="text-slate-900 dark:text-slate-100">{record.record_data.student_name}</b> • Age: {record.record_data.age} • Grade: {record.record_data.grade}</span>
-                          )}
-                          {record.type === "teachers" && (
-                            <span>Teacher: <b className="text-slate-900 dark:text-slate-100">{record.record_data.teacher_name}</b> • Subject: {record.record_data.subject}</span>
-                          )}
-                          {record.type === "dropouts" && (
-                            <span>Student: <b className="text-slate-900 dark:text-slate-100">{record.record_data.student_name}</b> • Reason: <b className="text-rose-600 bg-rose-50 dark:bg-rose-950/30 dark:text-rose-400 px-1">{record.record_data.reason}</b></span>
-                          )}
-                          {record.type === "transfers" && (
-                            <span>Student: <b className="text-slate-900 dark:text-slate-100">{record.record_data.student_name}</b> • Destination: {record.record_data.destination_school}</span>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 text-slate-500 dark:text-slate-400 whitespace-nowrap">
-                          {record.created_at}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        </main>
-      ) : (
-        <main className="flex-1 max-w-7xl w-full mx-auto p-6 grid grid-cols-1 lg:grid-cols-4 gap-6 animate-fadeIn">
+        <main className="flex-1 max-w-7xl w-full mx-auto p-6 animate-fadeIn"><SuperAdminInsights /></main>
+      ) : superTab === "users" ? (
+        <main className="flex-1 max-w-7xl w-full mx-auto p-6 grid grid-cols-1 lg:grid-cols-5 gap-6 animate-fadeIn">
           {/* Left panel: Create System User Form */}
-          <div className="lg:col-span-1 space-y-4">
+          <div className="lg:col-span-2 space-y-4">
             <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm transition-colors duration-200">
               <div className="flex items-center gap-2 mb-3 border-b border-slate-100 dark:border-slate-800 pb-3">
                 <Key className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
@@ -1929,203 +1731,43 @@ export default function Page() {
           </div>
 
           {/* Right panel: Users list and Quick Actions */}
-          <div className="lg:col-span-3 space-y-4 text-xs animate-fadeIn">
-            <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors duration-200">
-              <div className="relative flex-1 max-w-sm">
-                <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Search administrative accounts..."
-                  className="w-full pl-9 pr-4 py-1.5 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-slate-900 dark:focus:ring-slate-700"
-                  value={userSearchTerm}
-                  onChange={(e) => setUserSearchTerm(e.target.value)}
-                />
-              </div>
-              <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                Total System Accounts: <span className="text-slate-950 dark:text-slate-100 font-bold">{systemUsers.length}</span>
-              </div>
-            </div>
-
-            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden transition-colors duration-200">
-              <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20 flex justify-between items-center">
-                <h3 className="font-semibold text-slate-950 dark:text-slate-100 flex items-center gap-2 text-sm font-sans">
-                  <ShieldCheck className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
-                  Credentials & Administrative Access Control
-                </h3>
-              </div>
-
-              {usersLoading ? (
-                <div className="py-16 text-center text-slate-500 dark:text-slate-400 flex flex-col items-center justify-center gap-2">
-                  <RefreshCw className="h-8 w-8 animate-spin text-slate-400" />
-                  <span className="text-xs">Querying system access list...</span>
-                </div>
-              ) : systemUsers.length === 0 ? (
-                <div className="py-16 text-center text-slate-500 dark:text-slate-400">
-                  No system administrative accounts found.
-                </div>
-              ) : (
-                <div className="overflow-x-auto text-xs">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="bg-slate-100 dark:bg-slate-950 text-slate-600 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800/80">
-                        <th className="px-6 py-3 font-semibold uppercase tracking-wider">Account Operator</th>
-                        <th className="px-6 py-3 font-semibold uppercase tracking-wider">Role & Region</th>
-                        <th className="px-6 py-3 font-semibold uppercase tracking-wider">Login Timestamp</th>
-                        <th className="px-6 py-3 font-semibold uppercase tracking-wider">Status Control</th>
-                        <th className="px-6 py-3 text-right"></th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
-                      {systemUsers
-                        .filter(u => 
-                          u.full_name.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
-                          u.username.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
-                          u.email.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
-                          u.role.toLowerCase().includes(userSearchTerm.toLowerCase())
-                        )
-                        .map((sysUser) => {
-                          const isSelf = sysUser.username === user?.username;
-                          return (
-                            <tr key={sysUser.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition">
-                              <td className="px-6 py-4">
-                                <div className="flex items-center gap-2.5">
-                                  <div className="h-8 w-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-700 dark:text-slate-300 font-bold border border-slate-200 dark:border-slate-700">
-                                    {sysUser.full_name.charAt(0)}
-                                  </div>
-                                  <div>
-                                    <span className="font-semibold text-slate-950 dark:text-slate-100 block">{sysUser.full_name} {isSelf && <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold bg-indigo-50 dark:bg-indigo-950/40 px-1.5 py-0.2 rounded-full border border-indigo-100 dark:border-indigo-900/40">You</span>}</span>
-                                    <span className="text-slate-500 dark:text-slate-400 text-[10px]">{sysUser.email} • @{sysUser.username}</span>
-                                  </div>
-                                </div>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <div className="flex flex-col gap-1">
-                                  <div className="flex items-center gap-1.5">
-                                    <select
-                                      value={sysUser.role}
-                                      disabled={sysUser.username === "super_admin"}
-                                      onChange={(e) => {
-                                        if (e.target.value === "__NEW_ROLE__") {
-                                          setCustomRoleCode("");
-                                          setCustomRoleName("");
-                                          setCustomRolePerms([]);
-                                          setCustomRoleCallback(() => (newRoleCode: string) => {
-                                            handleUpdateUserRoleRegion(sysUser.id, { role: newRoleCode });
-                                          });
-                                          setIsCustomRoleModalOpen(true);
-                                        } else {
-                                          handleUpdateUserRoleRegion(sysUser.id, { role: e.target.value });
-                                        }
-                                      }}
-                                      className="bg-transparent dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded px-1.5 py-0.5 font-semibold text-slate-800 dark:text-slate-200 focus:ring-1 focus:ring-slate-900 dark:focus:ring-slate-700 focus:outline-none focus:border-slate-300 dark:focus:border-slate-700 cursor-pointer text-[11px]"
-                                    >
-                                      {availableRoles.map((role) => (
-                                        <option key={role} value={role}>
-                                          {formatRoleLabel(role)}
-                                        </option>
-                                      ))}
-                                      <option value="__NEW_ROLE__">+ Add New Role...</option>
-                                    </select>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        const currentRole = sysUser.role;
-                                        setCustomRoleCode(currentRole);
-                                        setCustomRoleName(formatRoleLabel(currentRole));
-                                        setCustomRolePerms(rolePermissions[currentRole] || []);
-                                        setCustomRoleCallback(() => (newRoleCode: string) => {
-                                          fetchSystemUsers();
-                                        });
-                                        setIsCustomRoleModalOpen(true);
-                                      }}
-                                      disabled={sysUser.username === "super_admin"}
-                                      className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 rounded cursor-pointer disabled:opacity-30 disabled:hover:bg-transparent"
-                                      title="Configure Role Permissions"
-                                    >
-                                      <Shield className="h-3.5 w-3.5" />
-                                    </button>
-                                  </div>
-                                  <div className="flex flex-wrap gap-1 max-w-[220px] my-1">
-                                    {(rolePermissions[sysUser.role] || []).map((p: string) => {
-                                      const label = p.split("_").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
-                                      return (
-                                        <span key={p} className="text-[9px] font-medium bg-indigo-50/50 dark:bg-indigo-950/20 text-indigo-600 dark:text-indigo-400 border border-indigo-100/30 dark:border-indigo-900/30 px-1 rounded-sm">
-                                          {label}
-                                        </span>
-                                      );
-                                    })}
-                                    {(!rolePermissions[sysUser.role] || rolePermissions[sysUser.role].length === 0) && (
-                                      <span className="text-[9px] text-slate-400 italic">No permissions assigned</span>
-                                    )}
-                                  </div>
-                                  <div className="flex items-center gap-1 text-slate-500 dark:text-slate-400 text-[10px]">
-                                    <MapPin className="h-3 w-3 shrink-0 text-slate-400" />
-                                    <select
-                                      value={sysUser.region}
-                                      disabled={sysUser.username === "super_admin"}
-                                      onChange={(e) => handleUpdateUserRoleRegion(sysUser.id, { region: e.target.value })}
-                                      className="bg-transparent dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded px-1 py-0.1 focus:ring-1 focus:ring-slate-900 dark:focus:ring-slate-700 focus:outline-none focus:border-slate-300 dark:focus:border-slate-700 cursor-pointer"
-                                    >
-                                      <option value="All">All Regions</option>
-                                      {availableRegions.map((region) => (
-                                        <option key={region} value={region}>
-                                          {region} Region
-                                        </option>
-                                      ))}
-                                    </select>
-                                  </div>
-                                </div>
-                              </td>
-                              <td className="px-6 py-4 text-slate-500 dark:text-slate-400 whitespace-nowrap">
-                                <div className="flex items-center gap-1.5 font-mono text-[11px]">
-                                  <Clock className="h-3.5 w-3.5 text-slate-400" />
-                                  {sysUser.last_login || "Never accessed"}
-                                </div>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <button
-                                  onClick={() => handleToggleUserStatus(sysUser.id, sysUser.status)}
-                                  disabled={sysUser.username === "super_admin"}
-                                  className={`px-2.5 py-1 rounded-full text-[10px] font-bold border transition flex items-center gap-1 cursor-pointer ${
-                                    sysUser.status === "Active" 
-                                      ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/40 hover:bg-emerald-100/70 dark:hover:bg-emerald-900/60"
-                                      : "bg-slate-50 dark:bg-slate-950 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-850 hover:bg-slate-100 dark:hover:bg-slate-800"
-                                  }`}
-                                >
-                                  {sysUser.status === "Active" ? (
-                                    <>
-                                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
-                                      Active
-                                    </>
-                                  ) : (
-                                    <>
-                                      <span className="h-1.5 w-1.5 rounded-full bg-slate-400"></span>
-                                      Suspended
-                                    </>
-                                  )}
-                                </button>
-                              </td>
-                              <td className="px-6 py-4 text-right whitespace-nowrap">
-                                <button
-                                  onClick={() => handleDeleteUser(sysUser.id, sysUser.username)}
-                                  disabled={sysUser.username === "super_admin"}
-                                  className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded transition disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer"
-                                  title={sysUser.username === "super_admin" ? "Protected System Account" : "Remove Account"}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </button>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
+          <div className="lg:col-span-3 space-y-4 animate-fadeIn">
+            <UsersTable
+              currentUser={user}
+              availableRegions={availableRegions}
+              availableRoles={availableRoles}
+              rolePermissions={rolePermissions}
+              onConfigureRole={(roleName) => {
+                const currentRole = roleName;
+                setCustomRoleCode(currentRole);
+                setCustomRoleName(formatRoleLabel(currentRole));
+                setCustomRolePerms(rolePermissions[currentRole] || []);
+                setCustomRoleCallback(() => (newRoleCode: string) => {
+                  fetchSystemUsers();
+                });
+                setIsCustomRoleModalOpen(true);
+              }}
+              onRefreshStats={() => {
+                fetchSystemUsers();
+              }}
+            />
           </div>
         </main>
-      )}
+      ) : superTab === "config" ? (
+        <main className="flex-1 max-w-7xl w-full mx-auto p-6"><SuperAdminConfig /></main>
+      ) : superTab === "data" ? (
+        <main className="flex-1 max-w-7xl w-full mx-auto p-6"><SuperAdminData /></main>
+      ) : superTab === "reference" ? (
+        <main className="flex-1 max-w-7xl w-full mx-auto p-6"><SuperAdminReference /></main>
+      ) : superTab === "academic" ? (
+        <main className="flex-1 max-w-7xl w-full mx-auto p-6"><SuperAdminAcademic /></main>
+      ) : superTab === "regions" ? (
+        <main className="flex-1 max-w-7xl w-full mx-auto p-6"><SuperAdminRegions /></main>
+      ) : superTab === "security" ? (
+        <main className="flex-1 max-w-7xl w-full mx-auto p-6"><SuperAdminSecurity /></main>
+      ) : superTab === "health" ? (
+        <main className="flex-1 max-w-7xl w-full mx-auto p-6"><SuperAdminHealth /></main>
+      ) : null}
 
       {/* Configure Custom Role & Permissions Modal */}
       {isCustomRoleModalOpen && (
