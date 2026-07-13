@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import UsersTable from "@/components/UsersTable";
 import {
+  SuperAdminOverview,
   SuperAdminInsights,
   SuperAdminConfig,
   SuperAdminData,
@@ -16,7 +17,6 @@ import {
   Database, 
   RefreshCw, 
   AlertTriangle, 
-  CheckCircle, 
   Plus, 
   Trash2, 
   User, 
@@ -26,68 +26,24 @@ import {
   ArrowLeftRight, 
   UserMinus, 
   Search, 
-  Filter, 
-  AlertOctagon,
-  HelpCircle,
-  Clock,
-  Eye,
-  EyeOff,
-  Lock,
-  Mail,
-  ArrowLeft,
-  Check,
-  X,
-  Shield,
-  ShieldCheck,
-  Activity, ActivitySquare,
-  UserCheck,
-  UserX,
-  Settings,
-  BarChart3,
-  MapPin,
-  Briefcase,
-  Key,
-  Sun,
-  Moon,
-  FileText,
-  Map,
-  ShieldAlert,
-  Server,
-  Download,
-  Upload,
-  List,
+  Eye, 
+  EyeOff, 
+  Lock, 
+  Mail, 
+  ArrowLeft, 
+  Check, 
+  ShieldCheck, 
+  Activity, 
+  ActivitySquare, 
+  Settings, 
+  Sun, 
+  Moon, 
+  FileText, 
+  Map, 
+  ShieldAlert, 
   AlertCircle
 } from "lucide-react";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-  PieChart as RechartsPieChart,
-  Pie,
-  Cell,
-  LineChart,
-  Line,
-  AreaChart,
-  Area
-} from "recharts";
-import { Logo } from "../components/Logo";
-
-// Helper to lazily import and trigger canvas-confetti on the client side safely
-const triggerConfetti = async (options?: any) => {
-  if (typeof window !== "undefined") {
-    try {
-      const { default: confetti } = await import("canvas-confetti");
-      confetti(options);
-    } catch (err) {
-      console.error("Failed to load canvas-confetti dynamically", err);
-    }
-  }
-};
+import { Logo } from "@/components/Logo";
 import { motion } from "motion/react";
 
 interface DbStatusResponse {
@@ -185,23 +141,8 @@ export default function Page() {
 
   // Super Admin specific state variables
   const [superTab, setSuperTab] = useState<"insights" | "users" | "config" | "data" | "reference" | "academic" | "regions" | "security" | "health">("insights");
-  const [allRecords, setAllRecords] = useState<RegistryRecord[]>([]);
-  const [allRecordsLoading, setAllRecordsLoading] = useState(false);
   const [systemUsers, setSystemUsers] = useState<any[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
-  const [userSearchTerm, setUserSearchTerm] = useState("");
-  const [isAddingUser, setIsAddingUser] = useState(false);
-  const [newUserForm, setNewUserForm] = useState({
-    username: "",
-    email: "",
-    full_name: "",
-    role: "school_head",
-    region: "South",
-    password: "",
-    status: "Active"
-  });
-  const [userSubmitting, setUserSubmitting] = useState(false);
-  const [editingUser, setEditingUser] = useState<any | null>(null);
 
   // Dynamic user roles list managed from database entries
   const [availableRoles, setAvailableRoles] = useState<string[]>([
@@ -224,16 +165,6 @@ export default function Page() {
     school_admin: ["view_own_school", "view_students", "manage_students", "view_staff", "manage_staff", "view_inventory", "view_reports"]
   });
 
-  const [isCustomRoleModalOpen, setIsCustomRoleModalOpen] = useState(false);
-  const [customRoleCode, setCustomRoleCode] = useState("");
-  const [customRoleName, setCustomRoleName] = useState("");
-  const [customRolePerms, setCustomRolePerms] = useState<string[]>([]);
-  const [customRoleCallback, setCustomRoleCallback] = useState<((newRole: string) => void) | null>(null);
-
-  const [editingUserRolePrompt, setEditingUserRolePrompt] = useState<number | null>(null);
-  const [isCreatingCustomRole, setIsCreatingCustomRole] = useState(false);
-  const [customRoleInput, setCustomRoleInput] = useState("");
-
   // Dynamic user regions list managed from database entries
   const [availableRegions, setAvailableRegions] = useState<string[]>([
     "Central",
@@ -247,25 +178,6 @@ export default function Page() {
     "South",
     "South East"
   ]);
-
-  const formatRoleLabel = (role: string) => {
-    switch (role) {
-      case "super_admin":
-        return "Super Administrator";
-      case "region_admin":
-        return "Region Administrator";
-      case "subregion_admin":
-        return "Sub-Region Administrator";
-      case "school_head":
-        return "School Head";
-      default:
-        return role
-          .replace(/[_-]/g, " ")
-          .split(" ")
-          .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-          .join(" ");
-    }
-  };
 
   // Fetch Database Status & Diagnostics
   const checkDatabaseStatus = async (silent = false) => {
@@ -304,23 +216,6 @@ export default function Page() {
       setRecordsLoading(false);
     }
   }, [dbStatus, activeTab]);
-
-  // Fetch ALL Records (unfiltered) from Aiven MySQL for Super Admin analytics & graphs
-  const fetchAllRecords = useCallback(async () => {
-    if (dbStatus !== "online") return;
-    setAllRecordsLoading(true);
-    try {
-      const res = await fetch("/api/registries");
-      if (res.ok) {
-        const data = await res.json();
-        setAllRecords(data.records || []);
-      }
-    } catch (e) {
-      console.error("Error fetching all records:", e);
-    } finally {
-      setAllRecordsLoading(false);
-    }
-  }, [dbStatus]);
 
   // Fetch System Users from Aiven MySQL
   const fetchSystemUsers = useCallback(async () => {
@@ -368,154 +263,6 @@ export default function Page() {
     }
   }, [dbStatus]);
 
-  // Save or update custom role and its permissions
-  const handleSaveCustomRole = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!customRoleCode.trim()) {
-      alert("Role code is required.");
-      return;
-    }
-    const roleCode = customRoleCode.trim().toLowerCase().replace(/[^a-z0-9_]/g, "");
-    
-    try {
-      const res = await fetch("/api/roles", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          role: roleCode,
-          permissions: customRolePerms
-        })
-      });
-      if (res.ok) {
-        // Register role in available roles list if it doesn't exist
-        if (!availableRoles.includes(roleCode)) {
-          setAvailableRoles((prev) => [...prev, roleCode]);
-        }
-        
-        // Save configured permissions mapping locally
-        setRolePermissions((prev) => ({
-          ...prev,
-          [roleCode]: customRolePerms
-        }));
-        
-        // Close modal
-        setIsCustomRoleModalOpen(false);
-        
-        // Execute dynamic callback to auto-assign this role to the pending user context
-        if (customRoleCallback) {
-          customRoleCallback(roleCode);
-        }
-        
-        triggerConfetti({ particleCount: 30, spread: 40 });
-      } else {
-        const errData = await res.json();
-        alert("Failed to save role permissions: " + (errData.error || "Unknown error"));
-      }
-    } catch (e) {
-      console.error("Error saving custom role:", e);
-      alert("Network error while saving custom role.");
-    }
-  };
-
-
-  // Create a new administrative user
-  const handleCreateUser = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setUserSubmitting(true);
-    try {
-      const res = await fetch("/api/users", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newUserForm)
-      });
-      if (res.ok) {
-        setIsAddingUser(false);
-        setIsCreatingCustomRole(false);
-        setCustomRoleInput("");
-        setNewUserForm({
-          username: "",
-          email: "",
-          full_name: "",
-          role: "school_head",
-          region: "South",
-          password: "",
-          status: "Active"
-        });
-        fetchSystemUsers();
-        triggerConfetti({ particleCount: 40, spread: 50 });
-      } else {
-        const errData = await res.json();
-        alert("Failed to provision user: " + (errData.error || "Unknown database error"));
-      }
-    } catch (e) {
-      alert("Network error while creating user.");
-    } finally {
-      setUserSubmitting(false);
-    }
-  };
-
-  // Toggle status of user (Active / Inactive)
-  const handleToggleUserStatus = async (userId: number, currentStatus: string) => {
-    const nextStatus = currentStatus === "Active" ? "Inactive" : "Active";
-    try {
-      const res = await fetch(`/api/users?id=${userId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: nextStatus })
-      });
-      if (res.ok) {
-        fetchSystemUsers();
-      } else {
-        const errData = await res.json();
-        alert("Failed to update status: " + (errData.error || "Unknown error"));
-      }
-    } catch (e) {
-      alert("Network error updating status.");
-    }
-  };
-
-  // Change user role or region
-  const handleUpdateUserRoleRegion = async (userId: number, updates: { role?: string; region?: string; full_name?: string }) => {
-    try {
-      const res = await fetch(`/api/users?id=${userId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updates)
-      });
-      if (res.ok) {
-        setEditingUser(null);
-        fetchSystemUsers();
-      } else {
-        const errData = await res.json();
-        alert("Failed to update user: " + (errData.error || "Unknown error"));
-      }
-    } catch (e) {
-      alert("Network error updating user details.");
-    }
-  };
-
-  // Delete an administrative user account
-  const handleDeleteUser = async (userId: number, username: string) => {
-    if (username === "super_admin") {
-      alert("Action Forbidden: Cannot delete default super_admin account.");
-      return;
-    }
-    if (!confirm(`Are you sure you want to permanently delete user "${username}" from the database?`)) {
-      return;
-    }
-    try {
-      const res = await fetch(`/api/users?id=${userId}`, { method: "DELETE" });
-      if (res.ok) {
-        fetchSystemUsers();
-      } else {
-        const errData = await res.json();
-        alert("Failed to delete user: " + (errData.error || "Unknown error"));
-      }
-    } catch (e) {
-      alert("Network error while deleting user.");
-    }
-  };
-
   // Handle Authentication Submission
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -545,16 +292,16 @@ export default function Page() {
         }
       } else {
         setUser(data.user);
+        // Always save user session to prevent unexpected logouts
+        localStorage.setItem("edu_vision_remembered_user", JSON.stringify(data.user));
+        
         if (rememberMe) {
-          localStorage.setItem("edu_vision_remembered_user", JSON.stringify(data.user));
           localStorage.setItem("edu_vision_remembered_username", authForm.username);
           localStorage.setItem("edu_vision_remember", "true");
         } else {
-          localStorage.removeItem("edu_vision_remembered_user");
           localStorage.removeItem("edu_vision_remembered_username");
           localStorage.removeItem("edu_vision_remember");
         }
-        triggerConfetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
       }
     } catch (err) {
       setAuthError("Could not connect to the authentication server.");
@@ -585,7 +332,6 @@ export default function Page() {
         setForgotPasswordError("Please enter a valid email address.");
       } else {
         setForgotPasswordSuccess(true);
-        triggerConfetti({ particleCount: 50, spread: 60, origin: { y: 0.6 } });
       }
     } catch (err) {
       setForgotPasswordError("Could not reach authentication server. Please try again.");
@@ -621,10 +367,6 @@ export default function Page() {
         setIsAdding(false);
         setFormFields({});
         fetchRecords();
-        if (user?.role === "super_admin") {
-          fetchAllRecords();
-        }
-        triggerConfetti({ particleCount: 30, spread: 50 });
       } else {
         const errData = await res.json();
         alert("Failed to insert record: " + (errData.error || "Unknown database error"));
@@ -646,9 +388,6 @@ export default function Page() {
       const res = await fetch(`/api/registries?id=${id}`, { method: "DELETE" });
       if (res.ok) {
         fetchRecords();
-        if (user?.role === "super_admin") {
-          fetchAllRecords();
-        }
       } else {
         alert("Failed to delete record.");
       }
@@ -659,22 +398,23 @@ export default function Page() {
 
   // Load remembered user session & preference on initial mount
   useEffect(() => {
+    // 1. Always load active session if it exists to prevent automatic logout on reload/refresh
+    const rememberedUser = localStorage.getItem("edu_vision_remembered_user");
+    if (rememberedUser) {
+      try {
+        const parsed = JSON.parse(rememberedUser);
+        if (parsed) {
+          setUser(parsed);
+        }
+      } catch (e) {
+        console.error("Error parsing remembered user session:", e);
+      }
+    }
+
+    // 2. Load "Remember Me" preferences & username
     const savedRemember = localStorage.getItem("edu_vision_remember");
     if (savedRemember === "true") {
       setRememberMe(true);
-      
-      const rememberedUser = localStorage.getItem("edu_vision_remembered_user");
-      if (rememberedUser) {
-        try {
-          const parsed = JSON.parse(rememberedUser);
-          if (parsed) {
-            setUser(parsed);
-          }
-        } catch (e) {
-          console.error("Error parsing remembered user session:", e);
-        }
-      }
-
       const rememberedUsername = localStorage.getItem("edu_vision_remembered_username");
       if (rememberedUsername) {
         setAuthForm((prev) => ({ ...prev, username: rememberedUsername }));
@@ -692,12 +432,11 @@ export default function Page() {
     if (dbStatus === "online" && user) {
       fetchRecords();
       if (user.role === "super_admin") {
-        fetchAllRecords();
         fetchSystemUsers();
       }
       fetchRolePermissions();
     }
-  }, [activeTab, dbStatus, user, fetchRecords, fetchAllRecords, fetchSystemUsers, fetchRolePermissions]);
+  }, [activeTab, dbStatus, user, fetchRecords, fetchSystemUsers, fetchRolePermissions]);
 
   // Set default form values when tab changes
   useEffect(() => {
@@ -727,7 +466,7 @@ export default function Page() {
   // Hydration safety guard
   if (!mounted) {
     return (
-      <div className="flex-1 min-h-screen bg-slate-50 dark:bg-[#090d16] flex items-center justify-center transition-colors duration-300">
+      <div className="flex-1 min-h-screen bg-slate-50 dark:bg-[#070D1F] flex items-center justify-center transition-colors duration-300">
         <RefreshCw className="h-8 w-8 animate-spin text-[#00a8cc]" />
       </div>
     );
@@ -743,12 +482,12 @@ export default function Page() {
         }}
         onMouseEnter={() => setIsHoveringBg(true)}
         onMouseLeave={() => setIsHoveringBg(false)}
-        className="relative flex-1 flex flex-col justify-center items-center px-4 py-12 sm:px-6 lg:px-8 bg-slate-50 dark:bg-[#090d16] text-slate-900 dark:text-slate-100 overflow-hidden transition-colors duration-300"
+        className="relative min-h-screen flex flex-col justify-center items-center px-4 py-12 sm:px-6 lg:px-8 bg-slate-50 dark:bg-[#070D1F] text-slate-900 dark:text-slate-100 overflow-hidden transition-colors duration-300"
       >
         {/* Floating Theme Toggle */}
         <button
           onClick={toggleDarkMode}
-          className="absolute top-4 right-4 z-50 p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 shadow-sm hover:shadow-md transition duration-200 flex items-center justify-center cursor-pointer"
+          className="absolute top-4 right-4 z-50 p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 text-slate-700 dark:text-slate-300 shadow-sm hover:shadow-md transition duration-200 flex items-center justify-center cursor-pointer"
           title="Toggle Theme"
           id="theme-toggle-login"
         >
@@ -759,7 +498,7 @@ export default function Page() {
         <motion.div
           className="absolute inset-0 pointer-events-none z-0 transition-opacity duration-300"
           style={{
-            background: `radial-gradient(400px circle at ${mousePos.x}px ${mousePos.y}px, rgba(34, 211, 238, 0.18), transparent 80%)`,
+            background: `radial-gradient(400px circle at ${mousePos.x}px ${mousePos.y}px, rgba(0, 168, 204, 0.12), transparent 80%)`,
           }}
           animate={{
             opacity: isHoveringBg ? 1 : 0,
@@ -768,7 +507,7 @@ export default function Page() {
 
         {/* Glowing bubble that follows mouse */}
         <motion.div
-          className="absolute pointer-events-none rounded-full bg-emerald-400/10 blur-3xl w-80 h-80 -translate-x-1/2 -translate-y-1/2 z-0"
+          className="absolute pointer-events-none rounded-full bg-cyan-400/5 blur-3xl w-80 h-80 -translate-x-1/2 -translate-y-1/2 z-0"
           animate={{
             x: mousePos.x,
             y: mousePos.y,
@@ -785,67 +524,20 @@ export default function Page() {
         {/* Subtle decorative grid pattern */}
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] dark:bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-60 dark:opacity-30" />
 
-        {/* Floating gradient blob 1 */}
-        <motion.div
-          animate={{
-            x: [0, 40, -20, 0],
-            y: [0, -30, 40, 0],
-            scale: [1, 1.15, 0.9, 1],
-          }}
-          transition={{
-            duration: 20,
-            repeat: Infinity,
-            ease: "easeInOut",
-          }}
-          className="absolute -top-40 -left-40 w-96 h-96 rounded-full bg-cyan-200/40 dark:bg-cyan-950/20 blur-3xl pointer-events-none"
-        />
-
-        {/* Floating gradient blob 2 */}
-        <motion.div
-          animate={{
-            x: [0, -50, 30, 0],
-            y: [0, 40, -30, 0],
-            scale: [1, 0.9, 1.1, 1],
-          }}
-          transition={{
-            duration: 25,
-            repeat: Infinity,
-            ease: "easeInOut",
-          }}
-          className="absolute -bottom-40 -right-40 w-96 h-96 rounded-full bg-emerald-200/30 dark:bg-emerald-950/10 blur-3xl pointer-events-none"
-        />
-
-        {/* Floating gradient blob 3 (Center subtle pulse) */}
-        <motion.div
-          animate={{
-            opacity: [0.15, 0.3, 0.15],
-            scale: [0.85, 1.05, 0.85],
-          }}
-          transition={{
-            duration: 15,
-            repeat: Infinity,
-            ease: "easeInOut",
-          }}
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full bg-slate-200/25 dark:bg-slate-800/10 blur-3xl pointer-events-none"
-        />
-
         {/* Login Card */}
-        <div className="relative z-10 w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.15),_0_0_0_1px_rgba(0,0,0,0.04)] border border-slate-200/60 dark:border-slate-800/80 p-8 transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_35px_80px_-15px_rgba(0,0,0,0.22),_0_0_0_1px_rgba(0,0,0,0.06)] ring-8 ring-slate-100/40 dark:ring-slate-950/20">
+        <div className="relative z-10 w-full max-w-md bg-white dark:bg-[#0D1B3E]/85 dark:backdrop-blur-md rounded-2xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.1),_0_0_0_1px_rgba(0,0,0,0.04)] border border-slate-200/60 dark:border-[#1E2F5F] p-8 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_35px_80px_-15px_rgba(0,0,0,0.15),_0_0_0_1px_rgba(0,0,0,0.05)] ring-8 ring-slate-100/40 dark:ring-slate-950/10">
           <div className="flex flex-col items-center text-center mb-6">
-            {/* Elegant floating Logo (floating directly on card background as in the image) */}
             <div className="mb-4 flex justify-center">
-              <Logo size={105} className="drop-shadow-sm" />
+              <Logo size={80} className="drop-shadow-sm" />
             </div>
             
-            {/* EDU-VISION EMIS Brand Typography */}
-            <h2 className="text-3xl font-extrabold tracking-tight font-sans">
+            <h2 className="text-2xl font-extrabold tracking-tight font-sans">
               <span className="text-[#0a192f] dark:text-slate-100">EDU-</span>
               <span className="text-[#00a8cc]">VISION</span>
               <span className="text-[#0a192f] dark:text-slate-100"> EMIS</span>
             </h2>
             
-            {/* Subtitle */}
-            <p className="text-sm font-medium text-slate-500/90 dark:text-slate-400 mt-2 leading-relaxed max-w-[280px] sm:max-w-xs mx-auto">
+            <p className="text-xs font-semibold text-slate-500/90 dark:text-slate-400 mt-2 leading-relaxed">
               Botswana Educational Management Indicators System
             </p>
           </div>
@@ -853,15 +545,15 @@ export default function Page() {
           {!showForgotPassword ? (
             <div key="login-form">
               {authError && (
-                <div className="mb-4 p-3 bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30 rounded-lg flex gap-2 items-center text-xs text-rose-600 dark:text-rose-400">
-                  <AlertTriangle className="h-4 w-4 shrink-0" />
+                <div className="mb-4 p-3 bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30 rounded-lg flex gap-2 items-center text-xs text-rose-600 dark:text-rose-400 font-medium">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
                   <span>{authError}</span>
                 </div>
               )}
 
               <form onSubmit={handleLogin} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1">Username or Email</label>
+                  <label className="block text-xs font-bold text-slate-600 dark:text-gray-300 uppercase tracking-wider mb-1">Username or Email</label>
                   <div className="relative">
                     <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
                       <User className="h-4 w-4" />
@@ -870,7 +562,7 @@ export default function Page() {
                       type="text"
                       required
                       disabled={authLoading}
-                      className="w-full pl-10 pr-3 py-2 border border-slate-200 dark:border-slate-800 dark:bg-slate-950 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00a8cc] focus:border-[#00a8cc] disabled:bg-slate-50 disabled:text-slate-400 text-sm transition dark:text-slate-100"
+                      className="w-full pl-10 pr-3 py-2 border border-slate-200 dark:border-[#1E2E5D] dark:bg-[#111C3A] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00a8cc] focus:border-[#00a8cc] disabled:bg-slate-50 disabled:text-slate-400 text-sm transition dark:text-slate-100"
                       placeholder="e.g. super_admin"
                       value={authForm.username}
                       onChange={(e) => setAuthForm({ ...authForm, username: e.target.value })}
@@ -880,7 +572,7 @@ export default function Page() {
 
                 <div>
                   <div className="flex justify-between items-center mb-1">
-                    <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Password</label>
+                    <label className="block text-xs font-bold text-slate-600 dark:text-gray-300 uppercase tracking-wider">Password</label>
                     <button
                       type="button"
                       onClick={() => {
@@ -889,7 +581,7 @@ export default function Page() {
                         setForgotPasswordError("");
                         setForgotPasswordEmail("");
                       }}
-                      className="text-xs font-semibold text-[#00a8cc] hover:text-[#0b849f] transition"
+                      className="text-xs font-bold text-[#00a8cc] hover:text-[#0077b6] transition"
                     >
                       Forgot password?
                     </button>
@@ -903,7 +595,7 @@ export default function Page() {
                       type={showPassword ? "text" : "password"}
                       required
                       disabled={authLoading}
-                      className="w-full pl-10 pr-10 py-2 border border-slate-200 dark:border-slate-800 dark:bg-slate-950 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00a8cc] focus:border-[#00a8cc] disabled:bg-slate-50 disabled:text-slate-400 text-sm transition dark:text-slate-100"
+                      className="w-full pl-10 pr-10 py-2 border border-slate-200 dark:border-[#1E2E5D] dark:bg-[#111C3A] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00a8cc] focus:border-[#00a8cc] disabled:bg-slate-50 disabled:text-slate-400 text-sm transition dark:text-slate-100"
                       placeholder="••••••••"
                       value={authForm.password}
                       onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })}
@@ -911,23 +603,22 @@ export default function Page() {
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-650 dark:hover:text-slate-300"
                     >
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                   </div>
                 </div>
 
-                {/* Remember Me checkbox */}
                 <div className="flex items-center">
                   <input
                     id="remember_me"
                     type="checkbox"
                     checked={rememberMe}
                     onChange={(e) => setRememberMe(e.target.checked)}
-                    className="h-4 w-4 text-[#00a8cc] focus:ring-[#00a8cc] border-slate-300 dark:border-slate-700 dark:bg-slate-950 rounded cursor-pointer"
+                    className="h-4 w-4 text-[#00a8cc] focus:ring-[#00a8cc] border-slate-350 dark:border-slate-700 dark:bg-[#111C3A] rounded cursor-pointer"
                   />
-                  <label htmlFor="remember_me" className="ml-2 block text-xs text-slate-600 dark:text-slate-400 font-medium cursor-pointer select-none">
+                  <label htmlFor="remember_me" className="ml-2 block text-xs text-slate-600 dark:text-slate-300 font-medium cursor-pointer select-none">
                     Remember my credentials
                   </label>
                 </div>
@@ -935,7 +626,7 @@ export default function Page() {
                 <button
                   type="submit"
                   disabled={authLoading}
-                  className="w-full py-2.5 px-4 bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white font-semibold rounded-lg transition text-sm disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center gap-2 shadow-md hover:shadow-lg"
+                  className="w-full py-2.5 px-4 bg-slate-900 hover:bg-slate-850 dark:bg-[#00B4D8] dark:hover:bg-[#0077B6] text-white font-bold rounded-lg transition text-sm disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center gap-2 shadow-md hover:shadow-lg hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
                 >
                   {authLoading ? (
                     <>
@@ -959,7 +650,7 @@ export default function Page() {
                 <button
                   type="button"
                   onClick={() => setShowForgotPassword(false)}
-                  className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 transition font-medium"
+                  className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 transition font-medium cursor-pointer"
                 >
                   <ArrowLeft className="h-3.5 w-3.5" />
                   Back to Sign In
@@ -968,7 +659,7 @@ export default function Page() {
 
               <h3 className="text-base font-bold text-slate-950 dark:text-slate-100 mb-1">Reset Password</h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 mb-4 leading-relaxed">
-                Enter your registered administrator email address below. We will send you a password reset request code.
+                Enter your registered administrator email address below. We will simulate sending a password reset request code.
               </p>
 
               {forgotPasswordSuccess ? (
@@ -977,7 +668,7 @@ export default function Page() {
                     <Check className="h-5 w-5" />
                   </div>
                   <h4 className="text-sm font-bold text-slate-950 dark:text-slate-100 mb-1">Reset Code Dispatched</h4>
-                  <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mb-4">
+                  <p className="text-xs text-slate-650 dark:text-slate-450 leading-relaxed mb-4">
                     A password recovery link has been simulated & dispatched to <span className="font-semibold">{forgotPasswordEmail}</span>.
                   </p>
                   <button
@@ -986,7 +677,7 @@ export default function Page() {
                       setShowForgotPassword(false);
                       setForgotPasswordSuccess(false);
                     }}
-                    className="w-full py-2 bg-slate-950 hover:bg-slate-800 dark:bg-slate-850 dark:hover:bg-slate-700 text-white text-xs font-semibold rounded-lg transition"
+                    className="w-full py-2 bg-slate-950 hover:bg-slate-800 dark:bg-[#111C3A] dark:hover:bg-[#1e2f5d] text-white text-xs font-semibold rounded-lg transition cursor-pointer"
                   >
                     Done, return to Login
                   </button>
@@ -994,14 +685,14 @@ export default function Page() {
               ) : (
                 <form onSubmit={handleForgotPassword} className="space-y-4">
                   {forgotPasswordError && (
-                    <div className="p-3 bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30 rounded-lg flex gap-2 items-center text-xs text-rose-600 dark:text-rose-400">
-                      <AlertTriangle className="h-4 w-4 shrink-0" />
+                    <div className="p-3 bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30 rounded-lg flex gap-2 items-center text-xs text-rose-600 dark:text-rose-400 font-medium">
+                      <AlertCircle className="h-4 w-4 shrink-0" />
                       <span>{forgotPasswordError}</span>
                     </div>
                   )}
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1">Email Address</label>
+                    <label className="block text-xs font-bold text-slate-600 dark:text-gray-300 uppercase tracking-wider mb-1">Email Address</label>
                     <div className="relative">
                       <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
                         <Mail className="h-4 w-4" />
@@ -1010,7 +701,7 @@ export default function Page() {
                         type="email"
                         required
                         disabled={forgotPasswordLoading}
-                        className="w-full pl-10 pr-3 py-2 border border-slate-200 dark:border-slate-800 dark:bg-slate-950 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00a8cc] focus:border-[#00a8cc] disabled:bg-slate-50 disabled:text-slate-400 text-sm transition dark:text-slate-100"
+                        className="w-full pl-10 pr-3 py-2 border border-slate-200 dark:border-[#1E2E5D] dark:bg-[#111C3A] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00a8cc] focus:border-[#00a8cc] disabled:bg-slate-50 disabled:text-slate-400 text-sm transition dark:text-slate-100"
                         placeholder="e.g. admin@gov.bw"
                         value={forgotPasswordEmail}
                         onChange={(e) => setForgotPasswordEmail(e.target.value)}
@@ -1021,7 +712,7 @@ export default function Page() {
                   <button
                     type="submit"
                     disabled={forgotPasswordLoading}
-                    className="w-full py-2.5 px-4 bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white font-semibold rounded-lg transition text-sm disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center gap-2"
+                    className="w-full py-2.5 px-4 bg-slate-900 hover:bg-slate-850 dark:bg-[#00B4D8] dark:hover:bg-[#0077B6] text-white font-bold rounded-lg transition text-sm disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center gap-2 cursor-pointer"
                   >
                     {forgotPasswordLoading ? (
                       <>
@@ -1043,15 +734,15 @@ export default function Page() {
 
   // Render Full Application Dashboard (Main Registry Portal)
   return (
-    <div className="flex-1 flex flex-col">
+    <div className="flex-1 flex flex-col min-h-screen bg-slate-50 dark:bg-[#070D1F] text-slate-900 dark:text-slate-100 transition-colors duration-300">
       {/* Top Bar Header */}
-      <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4 transition-colors duration-200">
+      <header className="bg-white dark:bg-[#0D1B3E] border-b border-slate-200 dark:border-[#1E2F5F] px-6 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4 transition-colors duration-300">
         <div className="flex items-center gap-4">
           <div className="relative p-0.5 bg-slate-50/50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm shrink-0">
             <Logo size={44} />
           </div>
           <div>
-            <h1 className="text-xl font-extrabold text-slate-900 dark:text-slate-100 flex flex-wrap items-center gap-x-1.5">
+            <h1 className="text-xl font-extrabold text-slate-900 dark:text-slate-100 flex flex-wrap items-center gap-x-1.5 font-sans">
               <span>EDU-</span>
               <span className="text-[#00a8cc]">VISION</span>
               <span>EMIS</span>
@@ -1064,14 +755,14 @@ export default function Page() {
           <div className="bg-slate-50 dark:bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-xs flex gap-2 items-center">
             <User className="h-3.5 w-3.5 text-slate-500 dark:text-slate-400" />
             <div>
-              <span className="font-semibold block text-slate-800 dark:text-slate-200">{user.full_name}</span>
-              <span className="text-[10px] text-slate-500 dark:text-slate-400 capitalize">{user.role.replace("_", " ")} ({user.region} Region)</span>
+              <span className="font-semibold block text-slate-850 dark:text-slate-200">{user.full_name}</span>
+              <span className="text-[10px] text-slate-500 dark:text-slate-400 capitalize">{user.role.replace(/_/g, " ")} ({user.region} Region)</span>
             </div>
           </div>
 
           <button
             onClick={toggleDarkMode}
-            className="p-2 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition"
+            className="p-2 text-slate-500 dark:text-slate-400 hover:text-slate-850 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition cursor-pointer"
             title="Toggle Theme"
             id="theme-toggle-dashboard"
           >
@@ -1089,10 +780,12 @@ export default function Page() {
       </header>
 
       {/* Main Database Diagnostics Bar */}
-      <div className="bg-slate-900 text-white px-6 py-3 flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-800">
+      <div className="bg-slate-900 dark:bg-slate-950 text-white px-6 py-3 flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-850">
         <div className="flex items-center gap-2 text-xs font-sans">
-          <Database className="h-4 w-4 text-emerald-400" />
-          <span className="text-slate-300 font-medium">EMIS Database Sync Connected</span>
+          <Database className={`h-4 w-4 ${dbStatus === 'online' ? 'text-emerald-400' : 'text-rose-400 animate-pulse'}`} />
+          <span className="text-slate-300 font-medium">
+            {dbStatus === 'online' ? 'EMIS Database Sync Connected (Aiven Cloud)' : 'EMIS Database Disconnected'}
+          </span>
         </div>
         <button
           onClick={() => {
@@ -1108,8 +801,8 @@ export default function Page() {
       </div>
 
       {/* Super Admin Tab Selector */}
-      {user?.role === "super_admin" && (
-        <div className="bg-slate-100 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 px-6 py-2.5 flex flex-wrap items-center justify-between gap-4 transition-colors duration-200">
+      {user.role === "super_admin" && (
+        <div className="bg-slate-100 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-850 px-6 py-2.5 flex flex-wrap items-center justify-between gap-4 transition-colors duration-300">
           <div className="flex flex-wrap gap-1.5">
             {[
               { id: "insights", label: "National EMIS Insights", icon: Activity },
@@ -1128,9 +821,9 @@ export default function Page() {
                 <button
                   key={tab.id}
                   onClick={() => setSuperTab(tab.id as any)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition ${
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition cursor-pointer ${
                     isSelected
-                      ? "bg-slate-900 dark:bg-slate-800 text-white shadow-sm"
+                      ? "bg-slate-900 dark:bg-slate-850 text-white shadow-sm"
                       : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-slate-800/50"
                   }`}
                 >
@@ -1148,834 +841,532 @@ export default function Page() {
       )}
 
       {/* Primary Dashboard Content Area */}
-      {user?.role !== "super_admin" || superTab === "registries" ? (
+      {user.role !== "super_admin" ? (
         <main className="flex-1 max-w-7xl w-full mx-auto p-6 grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Navigation / Registry Selection sidebar */}
-        <div className="lg:col-span-1 space-y-4">
-          <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm transition-colors duration-200">
-            <h3 className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3">Registries</h3>
-            <nav className="space-y-1">
-              {[
-                { id: "students", label: "Student Registry", icon: GraduationCap },
-                { id: "teachers", label: "Teacher Registry", icon: Users },
-                { id: "dropouts", label: "Dropout Tracking", icon: UserMinus },
-                { id: "transfers", label: "School Transfers", icon: ArrowLeftRight }
-              ].map((item) => {
-                const Icon = item.icon;
-                const isSelected = activeTab === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => {
-                      setActiveTab(item.id as any);
-                      setIsAdding(false);
-                    }}
-                    className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm font-medium rounded-lg transition ${
-                      isSelected 
-                        ? "bg-slate-900 dark:bg-slate-850 text-white shadow" 
-                        : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-55 dark:hover:bg-slate-800/50"
-                    }`}
-                  >
-                    <Icon className="h-4 w-4 shrink-0" />
-                    {item.label}
-                  </button>
-                );
-              })}
-            </nav>
-          </div>
-
-          {/* Quick Metrics Chart */}
-          <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm text-xs transition-colors duration-200">
-            <h4 className="font-semibold text-slate-800 dark:text-slate-200 mb-2">Registry Summary counts</h4>
-            <div className="space-y-2 mt-3">
-              {[
-                { type: "students", label: "Students", color: "bg-indigo-500" },
-                { type: "teachers", label: "Teachers", color: "bg-emerald-500" },
-                { type: "dropouts", label: "Dropouts", color: "bg-rose-500" },
-                { type: "transfers", label: "Transfers", color: "bg-amber-500" }
-              ].map((m) => {
-                const count = records.filter(r => r.type === m.type).length;
-                return (
-                  <div key={m.type}>
-                    <div className="flex justify-between text-slate-600 dark:text-slate-400 mb-1">
-                      <span>{m.label}</span>
-                      <span className="font-semibold">{count} records</span>
-                    </div>
-                    <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                      <div 
-                        className={`h-full ${m.color} transition-all duration-500`}
-                        style={{ width: `${Math.min(100, count * 20)}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        {/* Dynamic List and Insertion Forms */}
-        <div className="lg:col-span-3 space-y-4">
-          {/* Action Ribbon & Filters */}
-          <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors duration-200">
-            <div className="flex flex-1 items-center gap-3">
-              <div className="relative flex-1 max-w-sm">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder={`Search active ${activeTab}...`}
-                  className="w-full pl-9 pr-4 py-1.5 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-slate-900 dark:focus:ring-slate-700"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-
-              {/* Region Selector */}
-              <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-950 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800">
-                <Filter className="h-3.5 w-3.5 text-slate-400" />
-                <select
-                  value={regionFilter}
-                  onChange={(e) => setRegionFilter(e.target.value)}
-                  className="bg-transparent border-none focus:outline-none font-medium text-slate-700 dark:text-slate-300 dark:bg-slate-950 cursor-pointer"
-                >
-                  <option value="All">All Regions</option>
-                  {availableRegions.map((region) => (
-                    <option key={region} value={region}>
-                      {region} Region
-                    </option>
-                  ))}
-                </select>
-              </div>
+          {/* Navigation / Registry Selection sidebar */}
+          <div className="lg:col-span-1 space-y-4">
+            <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm transition-colors duration-300">
+              <h3 className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3">Registries</h3>
+              <nav className="space-y-1">
+                {[
+                  { id: "students", label: "Student Registry", icon: GraduationCap },
+                  { id: "teachers", label: "Teacher Registry", icon: Users },
+                  { id: "dropouts", label: "Dropout Tracking", icon: UserMinus },
+                  { id: "transfers", label: "School Transfers", icon: ArrowLeftRight }
+                ].map((item) => {
+                  const Icon = item.icon;
+                  const isSelected = activeTab === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => {
+                        setActiveTab(item.id as any);
+                        setIsAdding(false);
+                      }}
+                      className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm font-medium rounded-lg transition cursor-pointer ${
+                        isSelected 
+                          ? "bg-slate-900 dark:bg-slate-800 text-white shadow" 
+                          : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                      }`}
+                    >
+                      <Icon className="h-4 w-4 shrink-0" />
+                      {item.label}
+                    </button>
+                  );
+                })}
+              </nav>
             </div>
 
-            <button
-              onClick={() => setIsAdding(!isAdding)}
-              className="px-4 py-1.5 bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white rounded-lg text-sm font-medium transition flex items-center gap-1.5 self-start sm:self-auto cursor-pointer"
-            >
-              <Plus className={`h-4 w-4 transition-transform ${isAdding ? "rotate-45" : ""}`} />
-              {isAdding ? "Cancel" : `Add Record`}
-            </button>
+            {/* Quick Metrics */}
+            <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm text-xs transition-colors duration-300">
+              <h4 className="font-semibold text-slate-800 dark:text-slate-200 mb-2">Registry Summary</h4>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Active Registry</span>
+                  <span className="font-bold capitalize">{activeTab}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Records Loaded</span>
+                  <span className="font-bold">{records.length}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Active Region Filter</span>
+                  <span className="font-bold">{regionFilter}</span>
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* Create Form Panel */}
-          {isAdding && (
-            <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm animate-fadeIn transition-colors duration-200">
-              <h3 className="font-bold text-slate-900 dark:text-slate-100 border-b border-slate-100 dark:border-slate-800 pb-3 mb-4">
-                Record New Registry Record: <span className="capitalize">{activeTab}</span>
-              </h3>
-
-              <form onSubmit={handleAddRecord} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">School Name</label>
+          {/* Main List Area */}
+          <div className="lg:col-span-3 space-y-4">
+            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm p-6 transition-colors duration-300">
+              
+              {/* Toolbar */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                <div className="relative flex-1 max-w-md">
+                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
                   <input
                     type="text"
-                    required
-                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-slate-900 dark:focus:ring-slate-700"
-                    placeholder="e.g. Mogoditshane Secondary"
-                    value={formFields.school_name || ""}
-                    onChange={(e) => setFormFields({ ...formFields, school_name: e.target.value })}
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder={`Search ${activeTab}...`}
+                    className="w-full pl-9 pr-4 py-1.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-[#00a8cc] focus:border-[#00a8cc] text-slate-900 dark:text-slate-100"
                   />
                 </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Region</label>
-                  <select
-                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-slate-900 dark:focus:ring-slate-700 cursor-pointer"
-                    value={formFields.region || (availableRegions[0] || "South")}
-                    onChange={(e) => setFormFields({ ...formFields, region: e.target.value })}
-                  >
-                    {availableRegions.map((region) => (
-                      <option key={region} value={region}>
-                        {region} Region
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                <div className="flex items-center gap-2">
+                  {user.region === "All" && (
+                    <select
+                      value={regionFilter}
+                      onChange={(e) => setRegionFilter(e.target.value)}
+                      className="text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#00a8cc] dark:text-slate-200"
+                    >
+                      <option value="All">All Regions</option>
+                      {availableRegions.map((reg) => (
+                        <option key={reg} value={reg}>{reg}</option>
+                      ))}
+                    </select>
+                  )}
 
-                {/* Tab Specific Fields */}
-                {activeTab === "students" && (
-                  <>
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Student Full Name</label>
-                      <input
-                        type="text"
-                        required
-                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-slate-900 dark:focus:ring-slate-700"
-                        placeholder="Thabo Molefe"
-                        value={formFields.student_name || ""}
-                        onChange={(e) => setFormFields({ ...formFields, student_name: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Gender</label>
-                      <select
-                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-slate-900 dark:focus:ring-slate-700"
-                        value={formFields.gender || "Male"}
-                        onChange={(e) => setFormFields({ ...formFields, gender: e.target.value })}
-                      >
-                        <option value="Male">Male</option>
-                        <option value="Female">Female</option>
-                        <option value="Other">Other</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Grade / Level</label>
-                      <input
-                        type="text"
-                        required
-                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-slate-900 dark:focus:ring-slate-700"
-                        placeholder="Form 3"
-                        value={formFields.grade || ""}
-                        onChange={(e) => setFormFields({ ...formFields, grade: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Age</label>
-                      <input
-                        type="number"
-                        required
-                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-slate-900 dark:focus:ring-slate-700"
-                        placeholder="15"
-                        value={formFields.age || ""}
-                        onChange={(e) => setFormFields({ ...formFields, age: e.target.value })}
-                      />
-                    </div>
-                  </>
-                )}
-
-                {activeTab === "teachers" && (
-                  <>
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Teacher Full Name</label>
-                      <input
-                        type="text"
-                        required
-                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-slate-900 dark:focus:ring-slate-700"
-                        placeholder="Mrs. Sarah Dube"
-                        value={formFields.teacher_name || ""}
-                        onChange={(e) => setFormFields({ ...formFields, teacher_name: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Specialization Subject</label>
-                      <input
-                        type="text"
-                        required
-                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-slate-900 dark:focus:ring-slate-700"
-                        placeholder="Mathematics / Science"
-                        value={formFields.subject || ""}
-                        onChange={(e) => setFormFields({ ...formFields, subject: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Highest Qualification</label>
-                      <input
-                        type="text"
-                        required
-                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-slate-900 dark:focus:ring-slate-700"
-                        placeholder="Bachelor of Education"
-                        value={formFields.qualification || ""}
-                        onChange={(e) => setFormFields({ ...formFields, qualification: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Employment Type</label>
-                      <select
-                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-slate-900 dark:focus:ring-slate-700"
-                        value={formFields.employment_type || "Permanent"}
-                        onChange={(e) => setFormFields({ ...formFields, employment_type: e.target.value })}
-                      >
-                        <option value="Permanent">Permanent</option>
-                        <option value="Contract">Contract</option>
-                        <option value="Temporary">Temporary</option>
-                      </select>
-                    </div>
-                  </>
-                )}
-
-                {activeTab === "dropouts" && (
-                  <>
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Student Full Name</label>
-                      <input
-                        type="text"
-                        required
-                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-slate-900 dark:focus:ring-slate-700"
-                        placeholder="Lindiwe Ndiaye"
-                        value={formFields.student_name || ""}
-                        onChange={(e) => setFormFields({ ...formFields, student_name: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Dropout Grade</label>
-                      <input
-                        type="text"
-                        required
-                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-slate-900 dark:focus:ring-slate-700"
-                        placeholder="Form 4"
-                        value={formFields.grade || ""}
-                        onChange={(e) => setFormFields({ ...formFields, grade: e.target.value })}
-                      />
-                    </div>
-                    <div className="md:col-span-2">
-                      <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Reason for Withdrawal</label>
-                      <select
-                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-slate-900 dark:focus:ring-slate-700"
-                        value={formFields.reason || "Financial"}
-                        onChange={(e) => setFormFields({ ...formFields, reason: e.target.value })}
-                      >
-                        <option value="Financial">Financial Hardship</option>
-                        <option value="Relocation">Family Relocation</option>
-                        <option value="Health">Medical / Health Reasons</option>
-                        <option value="Academic">Academic Underperformance</option>
-                        <option value="Employment">Early Employment</option>
-                      </select>
-                    </div>
-                  </>
-                )}
-
-                {activeTab === "transfers" && (
-                  <>
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Student Full Name</label>
-                      <input
-                        type="text"
-                        required
-                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-slate-900 dark:focus:ring-slate-700"
-                        placeholder="Kabo Gaseitsiwe"
-                        value={formFields.student_name || ""}
-                        onChange={(e) => setFormFields({ ...formFields, student_name: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Destination School</label>
-                      <input
-                        type="text"
-                        required
-                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-slate-900 dark:focus:ring-slate-700"
-                        placeholder="Serowe Senior School"
-                        value={formFields.destination_school || ""}
-                        onChange={(e) => setFormFields({ ...formFields, destination_school: e.target.value })}
-                      />
-                    </div>
-                    <div className="md:col-span-2">
-                      <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Transfer Justification</label>
-                      <textarea
-                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-lg text-sm focus:outline-none h-20 focus:ring-1 focus:ring-slate-900 dark:focus:ring-slate-700"
-                        placeholder="Relocation of parent/guardian and proximity to new household."
-                        value={formFields.justification || ""}
-                        onChange={(e) => setFormFields({ ...formFields, justification: e.target.value })}
-                      />
-                    </div>
-                  </>
-                )}
-
-                <div className="md:col-span-2 flex justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
                   <button
-                    type="button"
-                    onClick={() => setIsAdding(false)}
-                    className="px-4 py-2 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 rounded-lg text-sm hover:bg-slate-50 dark:hover:bg-slate-800/50 transition cursor-pointer"
+                    onClick={() => {
+                      setFormFields({
+                        school_name: user.region === "All" ? "" : "Mogoditshane Secondary",
+                        region: user.region === "All" ? "South" : user.region,
+                      });
+                      setIsAdding(true);
+                    }}
+                    className="flex items-center gap-1 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 dark:bg-[#00B4D8] dark:hover:bg-[#0077B6] text-white text-xs font-bold rounded-lg transition shadow-sm cursor-pointer"
                   >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={submitting}
-                    className="px-5 py-2 bg-slate-950 dark:bg-slate-800 text-white rounded-lg text-sm hover:bg-slate-800 dark:hover:bg-slate-700 transition flex items-center gap-1.5 cursor-pointer"
-                  >
-                    {submitting ? "Saving to Aiven..." : "Submit to MySQL"}
+                    <Plus className="h-3.5 w-3.5" />
+                    Add Record
                   </button>
                 </div>
-              </form>
+              </div>
+
+              {/* Add form overlay / view */}
+              {isAdding && (
+                <div className="mb-6 p-4 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-sm font-extrabold capitalize dark:text-slate-100">Add New {activeTab.slice(0, -1)} Record</h3>
+                    <button 
+                      onClick={() => setIsAdding(false)}
+                      className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs font-bold cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                  
+                  <form onSubmit={handleAddRecord} className="space-y-4 text-xs">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block font-bold text-slate-600 dark:text-slate-400 mb-1">School Name</label>
+                        <input
+                          type="text"
+                          required
+                          value={formFields.school_name || ""}
+                          onChange={(e) => setFormFields({ ...formFields, school_name: e.target.value })}
+                          placeholder="e.g. Mogoditshane Secondary"
+                          className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-none dark:text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block font-bold text-slate-600 dark:text-slate-400 mb-1">Region</label>
+                        <select
+                          value={formFields.region || ""}
+                          onChange={(e) => setFormFields({ ...formFields, region: e.target.value })}
+                          className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-none dark:text-white"
+                        >
+                          {availableRegions.map(reg => (
+                            <option key={reg} value={reg}>{reg}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Dynamic inputs based on activeTab */}
+                      {activeTab === "students" && (
+                        <>
+                          <div>
+                            <label className="block font-bold text-slate-600 dark:text-slate-400 mb-1">Student Full Name</label>
+                            <input
+                              type="text"
+                              required
+                              placeholder="John Doe"
+                              value={formFields.full_name || ""}
+                              onChange={(e) => setFormFields({ ...formFields, full_name: e.target.value })}
+                              className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-none dark:text-white"
+                            />
+                          </div>
+                          <div>
+                            <label className="block font-bold text-slate-600 dark:text-slate-400 mb-1">Age</label>
+                            <input
+                              type="number"
+                              required
+                              placeholder="15"
+                              value={formFields.age || ""}
+                              onChange={(e) => setFormFields({ ...formFields, age: e.target.value })}
+                              className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-none dark:text-white"
+                            />
+                          </div>
+                          <div>
+                            <label className="block font-bold text-slate-600 dark:text-slate-400 mb-1">Gender</label>
+                            <select
+                              value={formFields.gender || "Male"}
+                              onChange={(e) => setFormFields({ ...formFields, gender: e.target.value })}
+                              className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-none dark:text-white"
+                            >
+                              <option value="Male">Male</option>
+                              <option value="Female">Female</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block font-bold text-slate-600 dark:text-slate-400 mb-1">Grade / Standard</label>
+                            <input
+                              type="text"
+                              required
+                              placeholder="Form 3"
+                              value={formFields.grade || ""}
+                              onChange={(e) => setFormFields({ ...formFields, grade: e.target.value })}
+                              className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-none dark:text-white"
+                            />
+                          </div>
+                          <div>
+                            <label className="block font-bold text-slate-600 dark:text-slate-400 mb-1">Parent Contact</label>
+                            <input
+                              type="text"
+                              required
+                              placeholder="+267 71234567"
+                              value={formFields.parent_contact || ""}
+                              onChange={(e) => setFormFields({ ...formFields, parent_contact: e.target.value })}
+                              className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-none dark:text-white"
+                            />
+                          </div>
+                        </>
+                      )}
+
+                      {activeTab === "teachers" && (
+                        <>
+                          <div>
+                            <label className="block font-bold text-slate-600 dark:text-slate-400 mb-1">Teacher Full Name</label>
+                            <input
+                              type="text"
+                              required
+                              placeholder="Mrs. Sarah Gaseitsewe"
+                              value={formFields.full_name || ""}
+                              onChange={(e) => setFormFields({ ...formFields, full_name: e.target.value })}
+                              className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-none dark:text-white"
+                            />
+                          </div>
+                          <div>
+                            <label className="block font-bold text-slate-600 dark:text-slate-400 mb-1">Qualification</label>
+                            <input
+                              type="text"
+                              required
+                              placeholder="B.Ed Mathematics"
+                              value={formFields.qualification || ""}
+                              onChange={(e) => setFormFields({ ...formFields, qualification: e.target.value })}
+                              className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-none dark:text-white"
+                            />
+                          </div>
+                          <div>
+                            <label className="block font-bold text-slate-600 dark:text-slate-400 mb-1">Subject</label>
+                            <input
+                              type="text"
+                              required
+                              placeholder="Mathematics"
+                              value={formFields.subject || ""}
+                              onChange={(e) => setFormFields({ ...formFields, subject: e.target.value })}
+                              className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-none dark:text-white"
+                            />
+                          </div>
+                          <div>
+                            <label className="block font-bold text-slate-600 dark:text-slate-400 mb-1">Experience (Years)</label>
+                            <input
+                              type="number"
+                              required
+                              placeholder="8"
+                              value={formFields.years_of_experience || ""}
+                              onChange={(e) => setFormFields({ ...formFields, years_of_experience: e.target.value })}
+                              className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-none dark:text-white"
+                            />
+                          </div>
+                          <div>
+                            <label className="block font-bold text-slate-600 dark:text-slate-400 mb-1">Phone Number</label>
+                            <input
+                              type="text"
+                              required
+                              placeholder="+267 72345678"
+                              value={formFields.phone_number || ""}
+                              onChange={(e) => setFormFields({ ...formFields, phone_number: e.target.value })}
+                              className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-none dark:text-white"
+                            />
+                          </div>
+                        </>
+                      )}
+
+                      {activeTab === "dropouts" && (
+                        <>
+                          <div>
+                            <label className="block font-bold text-slate-600 dark:text-slate-400 mb-1">Student Full Name</label>
+                            <input
+                              type="text"
+                              required
+                              placeholder="Kabo Smith"
+                              value={formFields.full_name || ""}
+                              onChange={(e) => setFormFields({ ...formFields, full_name: e.target.value })}
+                              className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-none dark:text-white"
+                            />
+                          </div>
+                          <div>
+                            <label className="block font-bold text-slate-600 dark:text-slate-400 mb-1">Grade</label>
+                            <input
+                              type="text"
+                              required
+                              placeholder="Form 2"
+                              value={formFields.grade || ""}
+                              onChange={(e) => setFormFields({ ...formFields, grade: e.target.value })}
+                              className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-none dark:text-white"
+                            />
+                          </div>
+                          <div>
+                            <label className="block font-bold text-slate-600 dark:text-slate-400 mb-1">Dropout Date</label>
+                            <input
+                              type="date"
+                              required
+                              value={formFields.dropout_date || ""}
+                              onChange={(e) => setFormFields({ ...formFields, dropout_date: e.target.value })}
+                              className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-none dark:text-white"
+                            />
+                          </div>
+                          <div>
+                            <label className="block font-bold text-slate-600 dark:text-slate-400 mb-1">Reason</label>
+                            <select
+                              value={formFields.reason || "Relocation"}
+                              onChange={(e) => setFormFields({ ...formFields, reason: e.target.value })}
+                              className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-none dark:text-white"
+                            >
+                              <option value="Relocation">Family Relocation</option>
+                              <option value="Financial">Financial Hardship</option>
+                              <option value="Academic">Academic Difficulty</option>
+                              <option value="Health">Health Issues</option>
+                              <option value="Other">Other Reason</option>
+                            </select>
+                          </div>
+                        </>
+                      )}
+
+                      {activeTab === "transfers" && (
+                        <>
+                          <div>
+                            <label className="block font-bold text-slate-600 dark:text-slate-400 mb-1">Student Full Name</label>
+                            <input
+                              type="text"
+                              required
+                              placeholder="Neo Mokgware"
+                              value={formFields.full_name || ""}
+                              onChange={(e) => setFormFields({ ...formFields, full_name: e.target.value })}
+                              className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-none dark:text-white"
+                            />
+                          </div>
+                          <div>
+                            <label className="block font-bold text-slate-600 dark:text-slate-400 mb-1">Destination School</label>
+                            <input
+                              type="text"
+                              required
+                              placeholder="Gaborone Senior Secondary"
+                              value={formFields.destination_school || ""}
+                              onChange={(e) => setFormFields({ ...formFields, destination_school: e.target.value })}
+                              className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-none dark:text-white"
+                            />
+                          </div>
+                          <div>
+                            <label className="block font-bold text-slate-600 dark:text-slate-400 mb-1">Grade</label>
+                            <input
+                              type="text"
+                              required
+                              placeholder="Form 4"
+                              value={formFields.grade || ""}
+                              onChange={(e) => setFormFields({ ...formFields, grade: e.target.value })}
+                              className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-none dark:text-white"
+                            />
+                          </div>
+                          <div>
+                            <label className="block font-bold text-slate-600 dark:text-slate-400 mb-1">Transfer Reason</label>
+                            <input
+                              type="text"
+                              required
+                              placeholder="Closer to family"
+                              value={formFields.transfer_reason || ""}
+                              onChange={(e) => setFormFields({ ...formFields, transfer_reason: e.target.value })}
+                              className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-none dark:text-white"
+                            />
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={submitting}
+                      className="w-full py-2 bg-slate-900 hover:bg-slate-850 dark:bg-[#00B4D8] dark:hover:bg-[#0077B6] text-white font-bold rounded-lg transition text-xs cursor-pointer"
+                    >
+                      {submitting ? "Submitting record..." : "Submit to Database"}
+                    </button>
+                  </form>
+                </div>
+              )}
+
+              {/* Records Table View */}
+              <div className="overflow-x-auto">
+                {recordsLoading ? (
+                  <div className="flex flex-col items-center justify-center py-12 gap-3">
+                    <RefreshCw className="h-6 w-6 animate-spin text-[#00a8cc]" />
+                    <span className="text-xs text-slate-500 font-medium">Retrieving registry records...</span>
+                  </div>
+                ) : filteredRecords.length === 0 ? (
+                  <div className="text-center py-12 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
+                    <AlertTriangle className="h-8 w-8 mx-auto text-slate-400 mb-3" />
+                    <p className="text-sm font-bold text-slate-700 dark:text-slate-300">No records found</p>
+                    <p className="text-xs text-slate-500 mt-1">There are no records in this category matching the query filters.</p>
+                  </div>
+                ) : (
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-500 uppercase font-bold tracking-wider">
+                        <th className="py-3 px-4">School</th>
+                        <th className="py-3 px-4">Region</th>
+                        {activeTab === "students" && (
+                          <>
+                            <th className="py-3 px-4">Name</th>
+                            <th className="py-3 px-4">Age / Gender</th>
+                            <th className="py-3 px-4">Grade</th>
+                            <th className="py-3 px-4">Contact</th>
+                          </>
+                        )}
+                        {activeTab === "teachers" && (
+                          <>
+                            <th className="py-3 px-4">Name</th>
+                            <th className="py-3 px-4">Qualification</th>
+                            <th className="py-3 px-4">Subject</th>
+                            <th className="py-3 px-4">Experience</th>
+                          </>
+                        )}
+                        {activeTab === "dropouts" && (
+                          <>
+                            <th className="py-3 px-4">Student Name</th>
+                            <th className="py-3 px-4">Grade</th>
+                            <th className="py-3 px-4">Date</th>
+                            <th className="py-3 px-4">Reason</th>
+                          </>
+                        )}
+                        {activeTab === "transfers" && (
+                          <>
+                            <th className="py-3 px-4">Student Name</th>
+                            <th className="py-3 px-4">Destination</th>
+                            <th className="py-3 px-4">Grade</th>
+                            <th className="py-3 px-4">Reason</th>
+                          </>
+                        )}
+                        <th className="py-3 px-4">Created At</th>
+                        <th className="py-3 px-4 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
+                      {filteredRecords.map((record) => (
+                        <tr key={record.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-850/40 transition">
+                          <td className="py-3.5 px-4 font-semibold text-slate-800 dark:text-slate-200">{record.school_name}</td>
+                          <td className="py-3.5 px-4"><span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 rounded font-medium">{record.region}</span></td>
+                          
+                          {activeTab === "students" && (
+                            <>
+                              <td className="py-3.5 px-4 font-bold text-slate-900 dark:text-slate-100">{record.record_data?.full_name || "N/A"}</td>
+                              <td className="py-3.5 px-4">{record.record_data?.age || "N/A"} / {record.record_data?.gender || "N/A"}</td>
+                              <td className="py-3.5 px-4">{record.record_data?.grade || "N/A"}</td>
+                              <td className="py-3.5 px-4 text-slate-500 font-mono">{record.record_data?.parent_contact || "N/A"}</td>
+                            </>
+                          )}
+                          {activeTab === "teachers" && (
+                            <>
+                              <td className="py-3.5 px-4 font-bold text-slate-900 dark:text-slate-100">{record.record_data?.full_name || "N/A"}</td>
+                              <td className="py-3.5 px-4">{record.record_data?.qualification || "N/A"}</td>
+                              <td className="py-3.5 px-4 text-slate-600 dark:text-slate-300">{record.record_data?.subject || "N/A"}</td>
+                              <td className="py-3.5 px-4">{record.record_data?.years_of_experience ? `${record.record_data.years_of_experience} yrs` : "N/A"}</td>
+                            </>
+                          )}
+                          {activeTab === "dropouts" && (
+                            <>
+                              <td className="py-3.5 px-4 font-bold text-slate-900 dark:text-slate-100">{record.record_data?.full_name || "N/A"}</td>
+                              <td className="py-3.5 px-4">{record.record_data?.grade || "N/A"}</td>
+                              <td className="py-3.5 px-4 text-slate-500 font-mono">{record.record_data?.dropout_date || "N/A"}</td>
+                              <td className="py-3.5 px-4"><span className="px-2 py-0.5 bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 rounded font-medium">{record.record_data?.reason || "N/A"}</span></td>
+                            </>
+                          )}
+                          {activeTab === "transfers" && (
+                            <>
+                              <td className="py-3.5 px-4 font-bold text-slate-900 dark:text-slate-100">{record.record_data?.full_name || "N/A"}</td>
+                              <td className="py-3.5 px-4 font-medium text-slate-700 dark:text-slate-300">{record.record_data?.destination_school || "N/A"}</td>
+                              <td className="py-3.5 px-4">{record.record_data?.grade || "N/A"}</td>
+                              <td className="py-3.5 px-4 text-slate-500">{record.record_data?.transfer_reason || "N/A"}</td>
+                            </>
+                          )}
+
+                          <td className="py-3.5 px-4 text-slate-500 font-mono text-[10px]">{record.created_at}</td>
+                          <td className="py-3.5 px-4 text-right">
+                            <button
+                              onClick={() => handleDeleteRecord(record.id)}
+                              className="p-1 text-slate-400 hover:text-rose-600 transition cursor-pointer"
+                              title="Delete Record"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+
+            </div>
+          </div>
+        </main>
+      ) : (
+        /* Super Admin Tabs Display */
+        <main className="flex-1 max-w-7xl w-full mx-auto p-6 space-y-6">
+          {superTab === "insights" && (
+            <div className="space-y-6">
+              <SuperAdminOverview />
+              <SuperAdminInsights />
             </div>
           )}
 
-          {/* Record Display Table */}
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden transition-colors duration-200">
-            <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-950/20">
-              <h3 className="font-semibold text-slate-950 dark:text-slate-100 capitalize flex items-center gap-2 text-sm">
-                <Database className="h-4 w-4 text-slate-400" />
-                Active Database Collection: {activeTab} ({filteredRecords.length} entries)
-              </h3>
+          {superTab === "users" && (
+            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
+              <UsersTable 
+                currentUser={user} 
+                availableRegions={availableRegions} 
+                availableRoles={availableRoles} 
+                rolePermissions={rolePermissions} 
+                onConfigureRole={() => setSuperTab("config")}
+                onRefreshStats={() => checkDatabaseStatus(true)}
+              />
             </div>
+          )}
 
-            {recordsLoading ? (
-              <div className="py-16 text-center text-slate-500 flex flex-col items-center justify-center gap-2">
-                <RefreshCw className="h-8 w-8 animate-spin text-slate-400" />
-                <span className="text-sm">Querying Aiven MySQL...</span>
-              </div>
-            ) : filteredRecords.length === 0 ? (
-              <div className="py-16 text-center max-w-sm mx-auto">
-                <div className="h-12 w-12 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-400">
-                  <Database className="h-6 w-6" />
-                </div>
-                <h4 className="font-semibold text-slate-800">No database entries found</h4>
-                <p className="text-xs text-slate-500 mt-1">
-                  Add new records above, or make sure your database query was synced.
-                </p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="bg-slate-100 dark:bg-slate-950 text-slate-600 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800/80">
-                      <th className="px-6 py-3 font-semibold uppercase tracking-wider">School & Region</th>
-                      <th className="px-6 py-3 font-semibold uppercase tracking-wider">Record Details</th>
-                      <th className="px-6 py-3 font-semibold uppercase tracking-wider">Date Created</th>
-                      <th className="px-6 py-3 text-right"></th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
-                    {filteredRecords.map((record) => (
-                      <tr key={record.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/30 transition">
-                        <td className="px-6 py-4">
-                          <span className="font-semibold text-slate-950 dark:text-slate-100 block">{record.school_name}</span>
-                          <span className="text-slate-500 dark:text-slate-400 text-[10px] bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded-full inline-block mt-0.5">
-                            {record.region} Region
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="space-y-1 text-slate-700 dark:text-slate-300">
-                            {record.type === "students" && (
-                              <>
-                                <span className="font-bold text-slate-900 dark:text-slate-100 block">{record.record_data.student_name}</span>
-                                <span>Gender: <b className="text-slate-900 dark:text-slate-100">{record.record_data.gender}</b> • Age: <b className="text-slate-900 dark:text-slate-100">{record.record_data.age}</b> • Grade: <b className="text-slate-900 dark:text-slate-100">{record.record_data.grade}</b></span>
-                              </>
-                            )}
-                            {record.type === "teachers" && (
-                              <>
-                                <span className="font-bold text-slate-900 dark:text-slate-100 block">{record.record_data.teacher_name}</span>
-                                <span>Subject: <b className="text-slate-900 dark:text-slate-100">{record.record_data.subject}</b> • Qualification: <b className="text-slate-900 dark:text-slate-100">{record.record_data.qualification}</b> • Employment: <b className="text-slate-900 dark:text-slate-100">{record.record_data.employment_type}</b></span>
-                              </>
-                            )}
-                            {record.type === "dropouts" && (
-                              <>
-                                <span className="font-bold text-slate-900 dark:text-slate-100 block">{record.record_data.student_name}</span>
-                                <span>Grade: <b className="text-slate-900 dark:text-slate-100">{record.record_data.grade}</b> • Reason: <b className="text-rose-600 bg-rose-50 dark:bg-rose-950/20 dark:text-rose-400 px-1.5 py-0.5 rounded">{record.record_data.reason}</b></span>
-                              </>
-                            )}
-                            {record.type === "transfers" && (
-                              <>
-                                <span className="font-bold text-slate-900 dark:text-slate-100 block">{record.record_data.student_name}</span>
-                                <span>Destination: <b className="text-slate-900 dark:text-slate-100">{record.record_data.destination_school}</b> • Justification: <span className="text-slate-500 dark:text-slate-400 italic">&ldquo;{record.record_data.justification || "None"}&rdquo;</span></span>
-                              </>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 text-slate-500 dark:text-slate-400 whitespace-nowrap">
-                          {record.created_at}
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          <button
-                            onClick={() => handleDeleteRecord(record.id)}
-                            className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded transition cursor-pointer"
-                            title="Remove Record"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        </div>
-      </main>
-      ) : superTab === "insights" ? (
-        <main className="flex-1 max-w-7xl w-full mx-auto p-6 animate-fadeIn"><SuperAdminInsights /></main>
-      ) : superTab === "users" ? (
-        <main className="flex-1 max-w-7xl w-full mx-auto p-6 grid grid-cols-1 lg:grid-cols-5 gap-6 animate-fadeIn">
-          {/* Left panel: Create System User Form */}
-          <div className="lg:col-span-2 space-y-4">
-            <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm transition-colors duration-200">
-              <div className="flex items-center gap-2 mb-3 border-b border-slate-100 dark:border-slate-800 pb-3">
-                <Key className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
-                <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">Provision Administrator</h3>
-              </div>
-              
-              <form onSubmit={handleCreateUser} className="space-y-3.5 text-xs">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Full Name</label>
-                  <input
-                    type="text"
-                    required
-                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-slate-900 dark:focus:ring-slate-700"
-                    placeholder="e.g. Neo Moroka"
-                    value={newUserForm.full_name}
-                    onChange={(e) => setNewUserForm({ ...newUserForm, full_name: e.target.value })}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Username</label>
-                  <input
-                    type="text"
-                    required
-                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-slate-900 dark:focus:ring-slate-700"
-                    placeholder="e.g. neomoroka"
-                    value={newUserForm.username}
-                    onChange={(e) => setNewUserForm({ ...newUserForm, username: e.target.value })}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Email Address</label>
-                  <input
-                    type="email"
-                    required
-                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-slate-900 dark:focus:ring-slate-700"
-                    placeholder="e.g. nmoroka@gov.bw"
-                    value={newUserForm.email}
-                    onChange={(e) => setNewUserForm({ ...newUserForm, email: e.target.value })}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Initial Password</label>
-                  <input
-                    type="password"
-                    required
-                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-slate-900 dark:focus:ring-slate-700"
-                    placeholder="••••••••"
-                    value={newUserForm.password}
-                    onChange={(e) => setNewUserForm({ ...newUserForm, password: e.target.value })}
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">System Role</label>
-                    <div className="flex items-center gap-1.5">
-                      <select
-                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 dark:focus:border-indigo-400 transition-all duration-200 cursor-pointer font-medium shadow-sm hover:border-slate-300 dark:hover:border-slate-700"
-                        value={newUserForm.role}
-                        onChange={(e) => {
-                          if (e.target.value === "__NEW_ROLE__") {
-                            setCustomRoleCode("");
-                            setCustomRoleName("");
-                            setCustomRolePerms([]);
-                            setCustomRoleCallback(() => (newRoleCode: string) => {
-                              setNewUserForm((prev) => ({ ...prev, role: newRoleCode }));
-                            });
-                            setIsCustomRoleModalOpen(true);
-                          } else {
-                            setNewUserForm({ ...newUserForm, role: e.target.value });
-                          }
-                        }}
-                      >
-                        {availableRoles.map((role) => (
-                          <option key={role} value={role}>
-                            {formatRoleLabel(role)}
-                          </option>
-                        ))}
-                        <option value="__NEW_ROLE__">+ Add Custom Role...</option>
-                      </select>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const currentRole = newUserForm.role;
-                          setCustomRoleCode(currentRole);
-                          setCustomRoleName(formatRoleLabel(currentRole));
-                          setCustomRolePerms(rolePermissions[currentRole] || []);
-                          setCustomRoleCallback(() => (newRoleCode: string) => {
-                            setNewUserForm((prev) => ({ ...prev, role: newRoleCode }));
-                          });
-                          setIsCustomRoleModalOpen(true);
-                        }}
-                        className="p-1.5 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-lg cursor-pointer flex items-center justify-center shrink-0"
-                        title="Configure Permissions"
-                      >
-                        <Shield className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Assigned Region</label>
-                    <select
-                      className="w-full px-2.5 py-2 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-slate-900 dark:focus:ring-slate-700 cursor-pointer"
-                      value={newUserForm.region}
-                      onChange={(e) => setNewUserForm({ ...newUserForm, region: e.target.value })}
-                    >
-                      <option value="All">All Regions</option>
-                      {availableRegions.map((region) => (
-                        <option key={region} value={region}>
-                          {region}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={userSubmitting}
-                  className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition text-xs flex justify-center items-center gap-1.5 shadow-sm cursor-pointer"
-                >
-                  {userSubmitting ? (
-                    <>
-                      <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                      Provisioning...
-                    </>
-                  ) : (
-                    <>
-                      <UserCheck className="h-3.5 w-3.5" />
-                      Provision Account
-                    </>
-                  )}
-                </button>
-              </form>
-            </div>
-          </div>
-
-          {/* Right panel: Users list and Quick Actions */}
-          <div className="lg:col-span-3 space-y-4 animate-fadeIn">
-            <UsersTable
-              currentUser={user}
-              availableRegions={availableRegions}
-              availableRoles={availableRoles}
-              rolePermissions={rolePermissions}
-              onConfigureRole={(roleName) => {
-                const currentRole = roleName;
-                setCustomRoleCode(currentRole);
-                setCustomRoleName(formatRoleLabel(currentRole));
-                setCustomRolePerms(rolePermissions[currentRole] || []);
-                setCustomRoleCallback(() => (newRoleCode: string) => {
-                  fetchSystemUsers();
-                });
-                setIsCustomRoleModalOpen(true);
-              }}
-              onRefreshStats={() => {
-                fetchSystemUsers();
-              }}
-            />
-          </div>
+          {superTab === "config" && <SuperAdminConfig />}
+          {superTab === "data" && <SuperAdminData />}
+          {superTab === "reference" && <SuperAdminReference />}
+          {superTab === "academic" && <SuperAdminAcademic />}
+          {superTab === "regions" && <SuperAdminRegions />}
+          {superTab === "security" && <SuperAdminSecurity />}
+          {superTab === "health" && <SuperAdminHealth />}
         </main>
-      ) : superTab === "config" ? (
-        <main className="flex-1 max-w-7xl w-full mx-auto p-6"><SuperAdminConfig /></main>
-      ) : superTab === "data" ? (
-        <main className="flex-1 max-w-7xl w-full mx-auto p-6"><SuperAdminData /></main>
-      ) : superTab === "reference" ? (
-        <main className="flex-1 max-w-7xl w-full mx-auto p-6"><SuperAdminReference /></main>
-      ) : superTab === "academic" ? (
-        <main className="flex-1 max-w-7xl w-full mx-auto p-6"><SuperAdminAcademic /></main>
-      ) : superTab === "regions" ? (
-        <main className="flex-1 max-w-7xl w-full mx-auto p-6"><SuperAdminRegions /></main>
-      ) : superTab === "security" ? (
-        <main className="flex-1 max-w-7xl w-full mx-auto p-6"><SuperAdminSecurity /></main>
-      ) : superTab === "health" ? (
-        <main className="flex-1 max-w-7xl w-full mx-auto p-6"><SuperAdminHealth /></main>
-      ) : null}
-
-      {/* Configure Custom Role & Permissions Modal */}
-      {isCustomRoleModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-all">
-          <div className="relative w-full max-w-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl p-6 overflow-hidden animate-in zoom-in-95 duration-200 text-left">
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4 mb-4">
-              <div className="flex items-center gap-2">
-                <div className="p-2 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 rounded-lg">
-                  <ShieldCheck className="h-5 w-5" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                    Role & Permissions Manager
-                  </h3>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                    Configure operational rights and scopes
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsCustomRoleModalOpen(false)}
-                className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg cursor-pointer"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveCustomRole} className="space-y-4">
-              {/* If it's a built-in role, warn the user */}
-              {["super_admin", "region_admin", "subregion_admin", "school_head"].includes(customRoleCode) ? (
-                <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/40 rounded-lg flex items-start gap-2.5">
-                  <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-                  <p className="text-[11px] text-amber-700 dark:text-amber-300 leading-normal">
-                    <strong>System Built-in Role:</strong> You are customizing the permissions for <strong>{customRoleName}</strong>. This modification will apply to all operators holding this role.
-                  </p>
-                </div>
-              ) : null}
-
-              {/* Role Identifiers */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
-                    Role System ID (Code)
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    disabled={["super_admin", "region_admin", "subregion_admin", "school_head"].includes(customRoleCode) && customRoleCode !== ""}
-                    placeholder="e.g. inspector"
-                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 disabled:opacity-60 text-slate-900 dark:text-slate-100 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                    value={customRoleCode}
-                    onChange={(e) => setCustomRoleCode(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
-                    Role Display Title
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    disabled={["super_admin", "region_admin", "subregion_admin", "school_head"].includes(customRoleCode) && customRoleCode !== ""}
-                    placeholder="e.g. System Inspector"
-                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 disabled:opacity-60 text-slate-900 dark:text-slate-100 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                    value={customRoleName}
-                    onChange={(e) => setCustomRoleName(e.target.value)}
-                  />
-                </div>
-              </div>
-
-              {/* Permissions Checklists */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">
-                  Assign System Permissions (Database Defined)
-                </label>
-                <div className="space-y-4 max-h-[280px] overflow-y-auto pr-1 border border-slate-100 dark:border-slate-800/80 rounded-lg p-3 bg-slate-50/50 dark:bg-slate-950/40">
-                  {/* Category 1 */}
-                  <div className="space-y-2">
-                    <span className="text-[10px] font-bold tracking-wider text-slate-400 uppercase">
-                      School & Directory Access
-                    </span>
-                    <div className="grid grid-cols-1 gap-1.5">
-                      {[
-                        { id: "view_all_schools", name: "View All Schools", desc: "Can view all schools in the system" },
-                        { id: "manage_all_schools", name: "Manage All Schools", desc: "Can create, update, and delete all schools" },
-                        { id: "view_region_schools", name: "View Region Schools", desc: "Can view schools within their region" },
-                        { id: "manage_region_schools", name: "Manage Region Schools", desc: "Can manage schools within their region" },
-                        { id: "view_subregion_schools", name: "View Subregion Schools", desc: "Can view schools within their sub-region" },
-                        { id: "manage_subregion_schools", name: "Manage Subregion Schools", desc: "Can manage schools within their sub-region" },
-                        { id: "view_own_school", name: "View Own School", desc: "Can view their own school data" },
-                        { id: "manage_own_school", name: "Manage Own School", desc: "Can manage their own school data" }
-                      ].map((perm) => (
-                        <label key={perm.id} className="flex items-start gap-2.5 p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition cursor-pointer">
-                          <input
-                            type="checkbox"
-                            className="mt-0.5 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 dark:border-slate-700"
-                            checked={customRolePerms.includes(perm.id)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setCustomRolePerms((prev) => [...prev, perm.id]);
-                              } else {
-                                setCustomRolePerms((prev) => prev.filter(x => x !== perm.id));
-                              }
-                            }}
-                          />
-                          <div>
-                            <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 block">{perm.name}</span>
-                            <span className="text-[10px] text-slate-400 leading-snug block">{perm.desc}</span>
-                          </div>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Category 2 */}
-                  <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                    <span className="text-[10px] font-bold tracking-wider text-slate-400 uppercase">
-                      Core Record Registries
-                    </span>
-                    <div className="grid grid-cols-1 gap-1.5">
-                      {[
-                        { id: "view_students", name: "View Students", desc: "Can view student records" },
-                        { id: "manage_students", name: "Manage Students", desc: "Can create, update, and delete student records" },
-                        { id: "view_staff", name: "View Staff", desc: "Can view educational staff records" },
-                        { id: "manage_staff", name: "Manage Staff", desc: "Can create, update, and delete staff records" },
-                        { id: "view_inventory", name: "View Inventory", desc: "Can view physical assets, textbooks, and recreation setups" },
-                        { id: "manage_inventory", name: "Manage Inventory", desc: "Can create, update, and delete inventory records" }
-                      ].map((perm) => (
-                        <label key={perm.id} className="flex items-start gap-2.5 p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition cursor-pointer">
-                          <input
-                            type="checkbox"
-                            className="mt-0.5 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 dark:border-slate-700"
-                            checked={customRolePerms.includes(perm.id)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setCustomRolePerms((prev) => [...prev, perm.id]);
-                              } else {
-                                setCustomRolePerms((prev) => prev.filter(x => x !== perm.id));
-                              }
-                            }}
-                          />
-                          <div>
-                            <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 block">{perm.name}</span>
-                            <span className="text-[10px] text-slate-400 leading-snug block">{perm.desc}</span>
-                          </div>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Category 3 */}
-                  <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                    <span className="text-[10px] font-bold tracking-wider text-slate-400 uppercase">
-                      Administrative & Governance
-                    </span>
-                    <div className="grid grid-cols-1 gap-1.5">
-                      {[
-                        { id: "view_reports", name: "View Reports", desc: "Can view system aggregate stats and national visual report cards" },
-                        { id: "manage_users", name: "Manage Administrative Operators", desc: "Provision, lock, or erase system user accounts" },
-                        { id: "view_audit_log", name: "View Audit Logs", desc: "Can view database access, insert, and update logs" },
-                        { id: "manage_policies", name: "Manage System Policies", desc: "Can manage general system configurations, synchronization rules, and database schema status" }
-                      ].map((perm) => (
-                        <label key={perm.id} className="flex items-start gap-2.5 p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition cursor-pointer">
-                          <input
-                            type="checkbox"
-                            className="mt-0.5 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 dark:border-slate-700"
-                            checked={customRolePerms.includes(perm.id)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setCustomRolePerms((prev) => [...prev, perm.id]);
-                              } else {
-                                setCustomRolePerms((prev) => prev.filter(x => x !== perm.id));
-                              }
-                            }}
-                          />
-                          <div>
-                            <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 block">{perm.name}</span>
-                            <span className="text-[10px] text-slate-400 leading-snug block">{perm.desc}</span>
-                          </div>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Action Handlers */}
-              <div className="flex items-center justify-end gap-2 border-t border-slate-100 dark:border-slate-800 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setIsCustomRoleModalOpen(false)}
-                  className="px-4 py-2 border border-slate-200 dark:border-slate-850 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold rounded-xl text-xs cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white text-white dark:text-slate-950 font-semibold rounded-xl text-xs shadow-md cursor-pointer flex items-center gap-1.5"
-                >
-                  <CheckCircle className="h-4 w-4" />
-                  Save Configurations
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
       )}
+
+      {/* Persistent System Info Footer */}
+      <footer className="mt-auto py-4 bg-white dark:bg-[#0D1B3E] border-t border-slate-200 dark:border-[#1E2F5F] text-center text-[10px] text-slate-400 font-mono">
+        Botswana Educational Management Indicators System — Connected to Aiven MySQL Sandbox Database
+      </footer>
     </div>
   );
 }
