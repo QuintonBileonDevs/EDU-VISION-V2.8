@@ -154,7 +154,7 @@ export default function MaintenanceGuard({ children }: { children: React.ReactNo
     return (
       <div className="fixed inset-0 bg-white dark:bg-[#090d16] z-[9999] flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+          <div className="w-12 h-12 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin" />
           <p className="text-xs font-bold text-slate-500 uppercase tracking-widest animate-pulse">Checking System Status</p>
         </div>
       </div>

@@ -55,14 +55,14 @@ export function SuperAdminOverview() {
       <div className="relative overflow-hidden bg-slate-900 rounded-2xl p-8 text-white shadow-2xl">
         <div className="relative z-10">
           <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-indigo-500/20 backdrop-blur-md rounded-lg border border-indigo-500/30">
-              <ShieldCheck className="h-6 w-6 text-indigo-400" />
+            <div className="p-2 bg-blue-500/20 backdrop-blur-md rounded-lg border border-blue-500/30">
+              <ShieldCheck className="h-6 w-6 text-blue-400" />
             </div>
             <h1 className="text-2xl font-bold tracking-tight">System Command Center</h1>
           </div>
           <p className="text-slate-300 max-w-2xl leading-relaxed">
             Welcome back, Super Administrator. The national education database is currently operating within normal parameters. 
-            Monitoring <span className="text-indigo-400 font-bold">1,240 schools</span> across <span className="text-emerald-400 font-bold">12 regions</span>.
+            Monitoring <span className="text-blue-400 font-bold">1,240 schools</span> across <span className="text-emerald-400 font-bold">12 regions</span>.
           </p>
           <div className="flex flex-wrap gap-4 mt-6">
             <div className="flex items-center gap-2 bg-white/5 backdrop-blur-sm px-4 py-2 rounded-full border border-white/10 text-xs font-semibold">
@@ -76,14 +76,14 @@ export function SuperAdminOverview() {
           </div>
         </div>
         {/* Background Accents */}
-        <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-600/20 blur-[100px] -mr-48 -mt-48 rounded-full" />
+        <div className="absolute top-0 right-0 w-96 h-96 bg-blue-600/20 blur-[100px] -mr-48 -mt-48 rounded-full" />
         <div className="absolute bottom-0 left-0 w-64 h-64 bg-emerald-600/10 blur-[80px] -ml-32 -mb-32 rounded-full" />
       </div>
 
       {/* Primary KPI Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
-          { label: "Real-time Traffic", value: "248", sub: "+12% from yesterday", icon: TrendingUp, color: "text-indigo-600", bg: "bg-indigo-50 dark:bg-indigo-950/20", trend: "up" },
+          { label: "Real-time Traffic", value: "248", sub: "+12% from yesterday", icon: TrendingUp, color: "text-blue-600", bg: "bg-blue-50 dark:bg-blue-950/20", trend: "up" },
           { label: "Active Sessions", value: c.sessionCount, sub: "Concurrent users", icon: Users, color: "text-emerald-600", bg: "bg-emerald-50 dark:bg-emerald-950/20", trend: "up" },
           { label: "System Alerts", value: c.alertCount, sub: "Requires attention", icon: ShieldAlert, color: "text-rose-600", bg: "bg-rose-50 dark:bg-rose-950/20", trend: "down" },
           { label: "Database Health", value: (parseFloat(c.healthAvg).toFixed(1) + "%"), sub: "Response latency < 45ms", icon: ActivitySquare, color: "text-amber-600", bg: "bg-amber-50 dark:bg-amber-950/20", trend: "up" }
@@ -111,7 +111,7 @@ export function SuperAdminOverview() {
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
         <div className="p-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Wrench className="h-4 w-4 text-indigo-500" />
+            <Wrench className="h-4 w-4 text-blue-500" />
             <span className="text-xs font-bold dark:text-white">Maintenance Intelligence Monitor</span>
           </div>
           <div className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-tighter flex items-center gap-1.5 ${
@@ -145,7 +145,7 @@ export function SuperAdminOverview() {
               <span className="font-bold dark:text-white">{data?.currentMaintenance?.admin_logins || '0'}</span>
             </div>
             <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
-              <div className="bg-indigo-500 h-full" style={{ width: `${Math.min(100, (parseInt(data?.currentMaintenance?.admin_logins || '0') / 5) * 100)}%` }} />
+              <div className="bg-blue-500 h-full" style={{ width: `${Math.min(100, (parseInt(data?.currentMaintenance?.admin_logins || '0') / 5) * 100)}%` }} />
             </div>
             <p className="text-[9px] text-slate-400 font-medium">Authorized administrators currently active in system.</p>
           </div>
@@ -175,7 +175,7 @@ export function SuperAdminOverview() {
               <p className="text-xs text-slate-500 mt-1">Comparison between active requests and error logs</p>
             </div>
             <div className="flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest">
-              <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-indigo-500" /> Requests</div>
+              <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-blue-500" /> Requests</div>
               <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-rose-500" /> Errors</div>
             </div>
           </div>
@@ -265,7 +265,7 @@ export function SuperAdminOverview() {
           <div className="grid grid-cols-2 gap-3">
             {[
               { label: "New Backup", icon: HardDrive, color: "bg-slate-100 dark:bg-slate-800" },
-              { label: "User Audit", icon: Shield, color: "bg-indigo-50 dark:bg-indigo-950/20" },
+              { label: "User Audit", icon: Shield, color: "bg-blue-50 dark:bg-blue-950/20" },
               { label: "Data Export", icon: Download, color: "bg-emerald-50 dark:bg-emerald-950/20" },
               { label: "Clean Logs", icon: Trash2, color: "bg-rose-50 dark:bg-rose-950/20" }
             ].map((btn, i) => (
@@ -277,21 +277,21 @@ export function SuperAdminOverview() {
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-indigo-600 to-violet-700 rounded-2xl p-6 text-white shadow-xl relative overflow-hidden">
+        <div className="bg-gradient-to-br from-blue-600 to-cyan-700 rounded-2xl p-6 text-white shadow-xl relative overflow-hidden">
           <div className="relative z-10 h-full flex flex-col">
-            <h3 className="font-bold mb-2 flex items-center gap-2 text-indigo-100">
+            <h3 className="font-bold mb-2 flex items-center gap-2 text-blue-100">
               <Layers className="h-4 w-4" /> System Health Status
             </h3>
             <p className="text-2xl font-black mb-4">Infrastructure is Healthy</p>
             <div className="space-y-4 mt-auto">
-              <div className="flex items-center justify-between text-xs font-bold text-indigo-100">
+              <div className="flex items-center justify-between text-xs font-bold text-blue-100">
                 <span>CPU Load</span>
                 <span>12%</span>
               </div>
               <div className="w-full bg-white/20 h-2 rounded-full overflow-hidden">
                 <div className="bg-white h-full transition-all duration-1000" style={{ width: '12%' }} />
               </div>
-              <div className="flex items-center justify-between text-xs font-bold text-indigo-100">
+              <div className="flex items-center justify-between text-xs font-bold text-blue-100">
                 <span>RAM Usage</span>
                 <span>4.2GB / 8GB</span>
               </div>
@@ -357,7 +357,7 @@ export function SuperAdminInsights() {
     <div className="space-y-6 animate-fadeIn">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: "Active User Sessions", count: loading ? "..." : c.sessionCount, color: "border-indigo-500 text-indigo-600 bg-indigo-50 dark:bg-indigo-950/20", icon: Users },
+          { label: "Active User Sessions", count: loading ? "..." : c.sessionCount, color: "border-blue-500 text-blue-600 bg-blue-50 dark:bg-blue-950/20", icon: Users },
           { label: "Security Alerts", count: loading ? "..." : c.alertCount, color: "border-rose-500 text-rose-600 bg-rose-50 dark:bg-rose-950/20", icon: ShieldAlert },
           { label: "System Errors", count: loading ? "..." : c.errorCount, color: "border-amber-500 text-amber-600 bg-amber-50 dark:bg-amber-950/20", icon: AlertTriangle },
           { label: "Health Metrics", count: loading ? "..." : (parseFloat(c.healthAvg).toFixed(1) + "%"), color: "border-emerald-500 text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20", icon: ActivitySquare }
@@ -667,7 +667,7 @@ export function MaintenanceManager({ data: dashboardData, fetchDashboard }: { da
           <div className="p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-base font-bold text-slate-950 dark:text-white flex items-center gap-2">
-                <Wrench className="h-4 w-4 text-indigo-500" /> System Maintenance Panel
+                <Wrench className="h-4 w-4 text-blue-500" /> System Maintenance Panel
               </h3>
               <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 ${
                 status?.is_active 
@@ -703,7 +703,7 @@ export function MaintenanceManager({ data: dashboardData, fetchDashboard }: { da
                   </div>
                   <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
                     <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Remaining</span>
-                    <p className="text-xs font-bold text-indigo-600 dark:text-indigo-400 mt-0.5">~{status.remaining_minutes || "0"} min</p>
+                    <p className="text-xs font-bold text-blue-600 dark:text-blue-400 mt-0.5">~{status.remaining_minutes || "0"} min</p>
                   </div>
                   <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
                     <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Blocked Reqs</span>
@@ -719,7 +719,7 @@ export function MaintenanceManager({ data: dashboardData, fetchDashboard }: { da
                   </div>
                   <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
                     <div 
-                      className="bg-indigo-600 h-full transition-all duration-500" 
+                      className="bg-blue-600 h-full transition-all duration-500" 
                       style={{ 
                         width: `${status.remaining_minutes > 0 ? Math.min(100, Math.round((status.elapsed_minutes / (status.elapsed_minutes + status.remaining_minutes)) * 100)) : 100}%` 
                       }} 
@@ -761,7 +761,7 @@ export function MaintenanceManager({ data: dashboardData, fetchDashboard }: { da
               ) : (
                 <button 
                   onClick={() => setShowEnableModal(true)}
-                  className="px-5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg transition shadow-md shadow-indigo-500/10"
+                  className="px-5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition shadow-md shadow-blue-500/10"
                 >
                   Enable Maintenance Mode
                 </button>
@@ -792,7 +792,7 @@ export function MaintenanceManager({ data: dashboardData, fetchDashboard }: { da
                     <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block mt-0.5">Blocked Last Hour</span>
                   </div>
                   <div className="p-3 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-100 dark:border-slate-800 text-center">
-                    <p className="text-lg font-black text-indigo-600">{(monitor?.active_admin_sessions || []).length || 0}</p>
+                    <p className="text-lg font-black text-blue-600">{(monitor?.active_admin_sessions || []).length || 0}</p>
                     <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block mt-0.5">Active Admins</span>
                   </div>
                 </div>
@@ -806,7 +806,7 @@ export function MaintenanceManager({ data: dashboardData, fetchDashboard }: { da
                       <div key={i} className="flex items-start justify-between p-2 bg-slate-50 dark:bg-slate-950 rounded-lg border border-slate-100 dark:border-slate-800 text-[10px]">
                         <div>
                           <span className={`font-extrabold uppercase px-1.5 py-0.5 rounded mr-1.5 text-[8px] ${
-                            act.action.includes('blocked') ? 'bg-rose-100 text-rose-700 dark:bg-rose-950/30' : 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950/30'
+                            act.action.includes('blocked') ? 'bg-rose-100 text-rose-700 dark:bg-rose-950/30' : 'bg-blue-100 text-blue-700 dark:bg-blue-950/30'
                           }`}>
                             {act.action}
                           </span>
@@ -829,7 +829,7 @@ export function MaintenanceManager({ data: dashboardData, fetchDashboard }: { da
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-6 space-y-6">
         <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
           <h3 className="text-base font-bold text-slate-950 dark:text-white flex items-center gap-2">
-            <BarChart className="h-4 w-4 text-indigo-500" /> Maintenance Analytics Dashboard
+            <BarChart className="h-4 w-4 text-blue-500" /> Maintenance Analytics Dashboard
           </h3>
           <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Historical Performance</span>
         </div>
@@ -843,7 +843,7 @@ export function MaintenanceManager({ data: dashboardData, fetchDashboard }: { da
             {/* KPI Cards Grid */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               {[
-                { label: "Total Events", value: analytics?.summary?.total_events || 0, icon: RefreshCw, color: "text-indigo-600 bg-indigo-50 dark:bg-indigo-950/20" },
+                { label: "Total Events", value: analytics?.summary?.total_events || 0, icon: RefreshCw, color: "text-blue-600 bg-blue-50 dark:bg-blue-950/20" },
                 { label: "Avg Duration", value: `${Math.round(analytics?.summary?.avg_duration_minutes || 0)}m`, icon: Clock, color: "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20" },
                 { label: "Total Blocked", value: analytics?.summary?.total_blocked_attempts || 0, icon: ShieldAlert, color: "text-rose-600 bg-rose-50 dark:bg-rose-950/20" },
                 { label: "Total Admin Logins", value: analytics?.summary?.total_admin_logins || 0, icon: User, color: "text-amber-600 bg-amber-50 dark:bg-amber-950/20" },
@@ -915,7 +915,7 @@ export function MaintenanceManager({ data: dashboardData, fetchDashboard }: { da
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-6 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
           <h3 className="text-base font-bold text-slate-950 dark:text-white flex items-center gap-2">
-            <History className="h-4 w-4 text-indigo-500" /> Maintenance History Tracking Logs
+            <History className="h-4 w-4 text-blue-500" /> Maintenance History Tracking Logs
           </h3>
           <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Total: {history?.pagination?.total || 0} Events</span>
         </div>
@@ -931,7 +931,7 @@ export function MaintenanceManager({ data: dashboardData, fetchDashboard }: { da
                 placeholder="Search notes, user..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:ring-1 focus:ring-indigo-500 outline-none"
+                className="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:ring-1 focus:ring-blue-500 outline-none"
               />
             </div>
           </div>
@@ -941,7 +941,7 @@ export function MaintenanceManager({ data: dashboardData, fetchDashboard }: { da
             <select
               value={filterAction}
               onChange={(e) => { setFilterAction(e.target.value); setHistoryOffset(0); }}
-              className="w-full py-1.5 px-3 text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:ring-1 focus:ring-indigo-500 outline-none"
+              className="w-full py-1.5 px-3 text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:ring-1 focus:ring-blue-500 outline-none"
             >
               <option value="">All Actions</option>
               <option value="ENABLED">ENABLED</option>
@@ -955,7 +955,7 @@ export function MaintenanceManager({ data: dashboardData, fetchDashboard }: { da
               type="date"
               value={filterFromDate}
               onChange={(e) => { setFilterFromDate(e.target.value); setHistoryOffset(0); }}
-              className="w-full py-1.5 px-3 text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:ring-1 focus:ring-indigo-500 outline-none"
+              className="w-full py-1.5 px-3 text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:ring-1 focus:ring-blue-500 outline-none"
             />
           </div>
 
@@ -965,7 +965,7 @@ export function MaintenanceManager({ data: dashboardData, fetchDashboard }: { da
               type="date"
               value={filterToDate}
               onChange={(e) => { setFilterToDate(e.target.value); setHistoryOffset(0); }}
-              className="w-full py-1.5 px-3 text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:ring-1 focus:ring-indigo-500 outline-none"
+              className="w-full py-1.5 px-3 text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:ring-1 focus:ring-blue-500 outline-none"
             />
           </div>
 
@@ -1089,7 +1089,7 @@ export function MaintenanceManager({ data: dashboardData, fetchDashboard }: { da
                   value={maintenanceMessage}
                   onChange={(e) => setMaintenanceMessage(e.target.value)}
                   placeholder="System maintenance in progress. Estimated completion: 2 hours."
-                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl px-4 py-2.5 text-xs outline-none focus:ring-1 focus:ring-indigo-500 h-24 font-medium"
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl px-4 py-2.5 text-xs outline-none focus:ring-1 focus:ring-blue-500 h-24 font-medium"
                 />
               </div>
 
@@ -1101,7 +1101,7 @@ export function MaintenanceManager({ data: dashboardData, fetchDashboard }: { da
                     value={estimatedTime}
                     onChange={(e) => setEstimatedTime(parseInt(e.target.value) || 0)}
                     min={5}
-                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs outline-none focus:ring-1 focus:ring-indigo-500 font-semibold"
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs outline-none focus:ring-1 focus:ring-blue-500 font-semibold"
                   />
                 </div>
                 <div className="space-y-1.5 flex flex-col justify-end">
@@ -1116,7 +1116,7 @@ export function MaintenanceManager({ data: dashboardData, fetchDashboard }: { da
                   value={whitelist}
                   onChange={(e) => setWhitelist(e.target.value)}
                   placeholder="admin@system.com, super_admin@education.gov.bw"
-                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs outline-none focus:ring-1 focus:ring-indigo-500 font-semibold"
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs outline-none focus:ring-1 focus:ring-blue-500 font-semibold"
                 />
                 <p className="text-[9px] text-slate-400">Comma-separated emails. Whitelisted accounts bypass the guard blocks seamlessly.</p>
               </div>
@@ -1144,11 +1144,11 @@ export function MaintenanceManager({ data: dashboardData, fetchDashboard }: { da
       {showDisableModal && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fadeIn">
           <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-lg w-full overflow-hidden">
-            <div className="p-6 border-b border-slate-100 dark:border-slate-800 bg-indigo-50/20 dark:bg-indigo-950/10">
-              <h3 className="text-base font-extrabold text-indigo-800 dark:text-indigo-400 flex items-center gap-2">
+            <div className="p-6 border-b border-slate-100 dark:border-slate-800 bg-blue-50/20 dark:bg-blue-950/10">
+              <h3 className="text-base font-extrabold text-blue-800 dark:text-blue-400 flex items-center gap-2">
                 <Wrench className="h-5 w-5" /> Disable System Maintenance Mode
               </h3>
-              <p className="text-xs text-indigo-600 mt-1">This will restore normal operations, allowing students, school heads, and the general public full access to registries and portals.</p>
+              <p className="text-xs text-blue-600 mt-1">This will restore normal operations, allowing students, school heads, and the general public full access to registries and portals.</p>
             </div>
             
             <div className="p-6 space-y-4">
@@ -1157,7 +1157,7 @@ export function MaintenanceManager({ data: dashboardData, fetchDashboard }: { da
                 <textarea 
                   value={disableNotes}
                   onChange={(e) => setDisableNotes(e.target.value)}
-                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl px-4 py-2.5 text-xs outline-none focus:ring-1 focus:ring-indigo-500 h-24 font-medium"
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl px-4 py-2.5 text-xs outline-none focus:ring-1 focus:ring-blue-500 h-24 font-medium"
                 />
                 <p className="text-[9px] text-slate-400">Describe actions executed (e.g., database upgrades, patch fixes) for complete administrative audits.</p>
               </div>
@@ -1172,7 +1172,7 @@ export function MaintenanceManager({ data: dashboardData, fetchDashboard }: { da
               </button>
               <button 
                 onClick={handleDisable}
-                className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition shadow-lg shadow-indigo-500/15"
+                className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition shadow-lg shadow-blue-500/15"
               >
                 Confirm Disable
               </button>
@@ -1198,7 +1198,7 @@ export function MaintenanceManager({ data: dashboardData, fetchDashboard }: { da
                 <textarea 
                   value={maintenanceMessage}
                   onChange={(e) => setMaintenanceMessage(e.target.value)}
-                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl px-4 py-2.5 text-xs outline-none focus:ring-1 focus:ring-indigo-500 h-24 font-medium"
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl px-4 py-2.5 text-xs outline-none focus:ring-1 focus:ring-blue-500 h-24 font-medium"
                 />
               </div>
 
@@ -1210,7 +1210,7 @@ export function MaintenanceManager({ data: dashboardData, fetchDashboard }: { da
                     value={estimatedTime}
                     onChange={(e) => setEstimatedTime(parseInt(e.target.value) || 0)}
                     min={5}
-                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs outline-none focus:ring-1 focus:ring-indigo-500 font-semibold"
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs outline-none focus:ring-1 focus:ring-blue-500 font-semibold"
                   />
                 </div>
                 <div className="space-y-1.5 flex flex-col justify-end">
@@ -1224,7 +1224,7 @@ export function MaintenanceManager({ data: dashboardData, fetchDashboard }: { da
                   type="text"
                   value={whitelist}
                   onChange={(e) => setWhitelist(e.target.value)}
-                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs outline-none focus:ring-1 focus:ring-indigo-500 font-semibold"
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs outline-none focus:ring-1 focus:ring-blue-500 font-semibold"
                 />
               </div>
             </div>
@@ -1238,7 +1238,7 @@ export function MaintenanceManager({ data: dashboardData, fetchDashboard }: { da
               </button>
               <button 
                 onClick={handleUpdateSettings}
-                className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition shadow-lg shadow-indigo-500/15"
+                className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition shadow-lg shadow-blue-500/15"
               >
                 Save Settings
               </button>
@@ -1345,7 +1345,7 @@ export function SuperAdminConfig() {
             <select 
               value={value}
               onChange={(e) => handleLocalUpdate(key, e.target.value)}
-              className="w-full sm:w-48 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-1.5 text-xs font-semibold focus:ring-1 focus:ring-indigo-500 transition-all cursor-pointer"
+              className="w-full sm:w-48 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-1.5 text-xs font-semibold focus:ring-1 focus:ring-blue-500 transition-all cursor-pointer"
             >
               <option value="">Select...</option>
               {options?.map((opt: any) => (
@@ -1356,14 +1356,14 @@ export function SuperAdminConfig() {
             <textarea 
               value={value}
               onChange={(e) => handleLocalUpdate(key, e.target.value)}
-              className="w-full sm:w-64 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-1.5 text-xs font-medium focus:ring-1 focus:ring-indigo-500 transition-all h-20"
+              className="w-full sm:w-64 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-1.5 text-xs font-medium focus:ring-1 focus:ring-blue-500 transition-all h-20"
             />
           ) : (
             <input 
               type={type}
               value={value}
               onChange={(e) => handleLocalUpdate(key, e.target.value)}
-              className="w-full sm:w-48 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-1.5 text-xs font-semibold focus:ring-1 focus:ring-indigo-500 transition-all"
+              className="w-full sm:w-48 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-1.5 text-xs font-semibold focus:ring-1 focus:ring-blue-500 transition-all"
             />
           )}
         </div>
@@ -1389,11 +1389,11 @@ export function SuperAdminConfig() {
                   onClick={() => setActiveCategory(cat.id)}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition group ${
                     isActive 
-                      ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/20" 
+                      ? "bg-blue-600 text-white shadow-md shadow-blue-500/20" 
                       : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200"
                   }`}
                 >
-                  <Icon className={`h-4 w-4 ${isActive ? "text-white" : "text-slate-400 group-hover:text-indigo-500"}`} />
+                  <Icon className={`h-4 w-4 ${isActive ? "text-white" : "text-slate-400 group-hover:text-blue-500"}`} />
                   <span className="text-xs font-bold">{cat.label}</span>
                   {isActive && <ChevronRight className="h-3.5 w-3.5 ml-auto opacity-50" />}
                 </button>
@@ -1416,7 +1416,7 @@ export function SuperAdminConfig() {
         <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden min-h-[600px]">
           <div className="p-6 border-b border-slate-100 dark:border-slate-800">
             <div className="flex items-center gap-3 mb-1">
-              <div className="p-2 bg-indigo-50 dark:bg-indigo-950/30 rounded-lg text-indigo-600">
+              <div className="p-2 bg-blue-50 dark:bg-blue-950/30 rounded-lg text-blue-600">
                 {React.createElement(categories.find(c => c.id === activeCategory)?.icon || Settings, { className: "h-5 w-5" })}
               </div>
               <h3 className="text-lg font-extrabold dark:text-white">
@@ -1441,7 +1441,7 @@ export function SuperAdminConfig() {
                   <div className="grid grid-cols-2 gap-3">
                     {["Uppercase", "Lowercase", "Numbers", "Special Characters"].map(req => (
                       <div key={req} className="flex items-center gap-2 px-3 py-2 bg-slate-50 dark:bg-slate-950 rounded-lg border border-slate-100 dark:border-slate-800">
-                        <input type="checkbox" id={`pw-${req}`} defaultChecked className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+                        <input type="checkbox" id={`pw-${req}`} defaultChecked className="rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
                         <label htmlFor={`pw-${req}`} className="text-xs font-medium dark:text-slate-300 cursor-pointer">{req}</label>
                       </div>
                     ))}
@@ -1687,8 +1687,8 @@ export function SuperAdminData() {
         <p className="text-slate-500 text-sm mb-6">Manage system backups, archives, and bulk imports/exports.</p>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          <div onClick={() => executeAction('create_backup', {})} className="border border-slate-200 dark:border-slate-800 p-5 rounded-lg flex flex-col items-center justify-center gap-3 cursor-pointer hover:border-indigo-500 hover:shadow-sm transition group">
-            <div className="p-3 bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 rounded-full group-hover:scale-110 transition"><Database className="h-6 w-6" /></div>
+          <div onClick={() => executeAction('create_backup', {})} className="border border-slate-200 dark:border-slate-800 p-5 rounded-lg flex flex-col items-center justify-center gap-3 cursor-pointer hover:border-blue-500 hover:shadow-sm transition group">
+            <div className="p-3 bg-blue-50 dark:bg-blue-950/30 text-blue-600 rounded-full group-hover:scale-110 transition"><Database className="h-6 w-6" /></div>
             <span className="text-sm font-semibold dark:text-white">Create System Backup</span>
           </div>
           <div className="border border-slate-200 dark:border-slate-800 p-5 rounded-lg flex flex-col items-center justify-center gap-3 cursor-pointer hover:border-emerald-500 hover:shadow-sm transition group">
@@ -1926,19 +1926,19 @@ export function SuperAdminReference() {
             <td className="py-3 px-4 font-semibold dark:text-slate-200">Subjects</td>
             <td className="py-3 px-4"><span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 rounded-full text-xs font-bold">24</span></td>
             <td className="py-3 px-4 text-xs text-slate-500">Academic subjects curriculum list</td>
-            <td className="py-3 px-4 text-right"><button className="text-indigo-600 text-xs font-semibold">Manage</button></td>
+            <td className="py-3 px-4 text-right"><button className="text-blue-600 text-xs font-semibold">Manage</button></td>
           </tr>
           <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
             <td className="py-3 px-4 font-semibold dark:text-slate-200">Grades / Forms</td>
             <td className="py-3 px-4"><span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 rounded-full text-xs font-bold">12</span></td>
             <td className="py-3 px-4 text-xs text-slate-500">Primary and Secondary grades</td>
-            <td className="py-3 px-4 text-right"><button className="text-indigo-600 text-xs font-semibold">Manage</button></td>
+            <td className="py-3 px-4 text-right"><button className="text-blue-600 text-xs font-semibold">Manage</button></td>
           </tr>
           <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
             <td className="py-3 px-4 font-semibold dark:text-slate-200">School Types</td>
             <td className="py-3 px-4"><span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 rounded-full text-xs font-bold">5</span></td>
             <td className="py-3 px-4 text-xs text-slate-500">Government, Private, Aided, etc.</td>
-            <td className="py-3 px-4 text-right"><button className="text-indigo-600 text-xs font-semibold">Manage</button></td>
+            <td className="py-3 px-4 text-right"><button className="text-blue-600 text-xs font-semibold">Manage</button></td>
           </tr>
         </tbody>
       </table>
@@ -1952,12 +1952,12 @@ export function SuperAdminAcademic() {
       <h3 className="text-lg font-bold mb-6 dark:text-white">Academic Management</h3>
       
       <h4 className="text-sm font-semibold mb-3 dark:text-slate-300">Active Academic Session</h4>
-      <div className="flex items-center gap-4 p-5 bg-indigo-50 dark:bg-indigo-950/20 rounded-xl border border-indigo-100 dark:border-indigo-900/30 mb-8">
+      <div className="flex items-center gap-4 p-5 bg-blue-50 dark:bg-blue-950/20 rounded-xl border border-blue-100 dark:border-blue-900/30 mb-8">
         <div className="flex-1">
-          <h4 className="text-xl font-extrabold text-indigo-900 dark:text-indigo-300">2026-2027</h4>
-          <p className="text-sm text-indigo-700 dark:text-indigo-400 mt-1">Term 1 • Starts: Jan 10 • Ends: Apr 15</p>
+          <h4 className="text-xl font-extrabold text-blue-900 dark:text-blue-300">2026-2027</h4>
+          <p className="text-sm text-blue-700 dark:text-blue-400 mt-1">Term 1 • Starts: Jan 10 • Ends: Apr 15</p>
         </div>
-        <button className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-lg shadow-sm transition">Manage Terms</button>
+        <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-lg shadow-sm transition">Manage Terms</button>
       </div>
 
       <h4 className="text-sm font-semibold mb-3 dark:text-slate-300">Academic Years History</h4>
@@ -1973,7 +1973,7 @@ export function SuperAdminAcademic() {
           <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
             <td className="py-3 px-4 font-semibold dark:text-slate-200">2025-2026</td>
             <td className="py-3 px-4"><span className="px-2 py-0.5 bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 rounded text-[10px] font-bold">Closed</span></td>
-            <td className="py-3 px-4 text-right"><button className="text-indigo-600 font-semibold">View</button></td>
+            <td className="py-3 px-4 text-right"><button className="text-blue-600 font-semibold">View</button></td>
           </tr>
         </tbody>
       </table>

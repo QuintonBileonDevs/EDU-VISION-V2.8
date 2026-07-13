@@ -62,9 +62,9 @@ export default function MaintenancePage() {
       >
         <div className="mb-8 flex justify-center">
           <div className="relative">
-            <div className="absolute inset-0 bg-indigo-500 blur-2xl opacity-20 animate-pulse" />
-            <div className="relative p-5 bg-indigo-50 dark:bg-indigo-950/50 rounded-2xl">
-              <Wrench className="h-12 w-12 text-indigo-600 dark:text-indigo-400" />
+            <div className="absolute inset-0 bg-blue-500 blur-2xl opacity-20 animate-pulse" />
+            <div className="relative p-5 bg-blue-50 dark:bg-blue-950/50 rounded-2xl">
+              <Wrench className="h-12 w-12 text-blue-600 dark:text-blue-400" />
             </div>
           </div>
         </div>
@@ -91,7 +91,7 @@ export default function MaintenancePage() {
           </div>
 
           <div className="p-4 bg-slate-50 dark:bg-slate-950/50 rounded-xl border border-slate-100 dark:border-slate-800 flex items-center gap-4 text-left">
-            <div className="p-2 bg-indigo-100 dark:bg-indigo-950/50 rounded-lg text-indigo-600">
+            <div className="p-2 bg-blue-100 dark:bg-blue-950/50 rounded-lg text-blue-600">
               <ShieldCheck className="h-5 w-5" />
             </div>
             <div>
@@ -105,7 +105,7 @@ export default function MaintenancePage() {
           <button 
             onClick={handleCheckStatus}
             disabled={isChecking}
-            className="group relative px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-2xl transition-all shadow-xl shadow-indigo-200 dark:shadow-indigo-900/20 active:scale-95 flex items-center gap-2 mx-auto disabled:opacity-70 disabled:cursor-wait"
+            className="group relative px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-2xl transition-all shadow-xl shadow-blue-200 dark:shadow-blue-900/20 active:scale-95 flex items-center gap-2 mx-auto disabled:opacity-70 disabled:cursor-wait"
           >
             <RefreshCw className={`h-4 w-4 ${isChecking ? 'animate-spin' : 'group-hover:rotate-180'} transition-transform duration-500`} />
             {isChecking ? 'Checking...' : 'Check System Status'}
@@ -119,7 +119,7 @@ export default function MaintenancePage() {
         </p>
         <Link 
           href="/" 
-          className="text-[10px] text-slate-400 dark:text-slate-600 hover:text-indigo-500 dark:hover:text-indigo-400 transition-colors uppercase tracking-widest font-medium"
+          className="text-[10px] text-slate-400 dark:text-slate-600 hover:text-blue-500 dark:hover:text-blue-400 transition-colors uppercase tracking-widest font-medium"
         >
           Admin Access
         </Link>

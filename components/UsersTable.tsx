@@ -660,7 +660,7 @@ export default function UsersTable({
             </button>
             <button
               onClick={() => handleBulkExport()}
-              className="flex items-center gap-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/40 dark:text-indigo-400 border border-indigo-100/40 dark:border-indigo-900/40 rounded-lg text-xs px-3 py-2 cursor-pointer font-semibold"
+              className="flex items-center gap-1 bg-blue-50 hover:bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:hover:bg-blue-900/40 dark:text-blue-400 border border-blue-100/40 dark:border-blue-900/40 rounded-lg text-xs px-3 py-2 cursor-pointer font-semibold"
             >
               <Download className="h-3.5 w-3.5" />
               Export {selectedIds.length > 0 ? `Selected (${selectedIds.length})` : "All"}
@@ -671,9 +671,9 @@ export default function UsersTable({
 
       {/* Group Actions Bar (appears above table when selection is > 0) */}
       {selectedIds.length > 0 && (
-        <div className="bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-150 dark:border-indigo-900 p-3 rounded-xl shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fadeIn text-xs">
-          <div className="flex items-center gap-2 font-medium text-indigo-900 dark:text-indigo-300">
-            <CheckCircle className="h-4 w-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
+        <div className="bg-blue-50 dark:bg-blue-950/40 border border-blue-150 dark:border-blue-900 p-3 rounded-xl shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fadeIn text-xs">
+          <div className="flex items-center gap-2 font-medium text-blue-900 dark:text-blue-300">
+            <CheckCircle className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
             <span>
               <b>{selectedIds.length}</b> account{selectedIds.length > 1 ? "s" : ""} selected for bulk operations
             </span>
@@ -704,7 +704,7 @@ export default function UsersTable({
             {statusFilter === "deleted" ? (
               <button
                 onClick={handleBulkRestore}
-                className="flex items-center gap-1 bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/40 text-purple-700 dark:text-purple-400 border border-purple-200 dark:border-purple-900 rounded px-2.5 py-1 font-bold cursor-pointer transition text-[11px]"
+                className="flex items-center gap-1 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900 rounded px-2.5 py-1 font-bold cursor-pointer transition text-[11px]"
               >
                 <RefreshCw className="h-3 w-3" />
                 Restore
@@ -756,7 +756,7 @@ export default function UsersTable({
                           .filter((u) => u.username !== "super_admin" && u.id !== currentUser?.id)
                           .every((u) => selectedIds.includes(u.id))
                       }
-                      className="rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                      className="rounded border-slate-300 dark:border-slate-700 text-blue-600 focus:ring-blue-500 cursor-pointer"
                     />
                   </th>
                   <th className="px-6 py-3 cursor-pointer select-none hover:bg-slate-100 dark:hover:bg-slate-900 transition" onClick={() => { setSortBy("full_name"); setSortOrder(sortOrder === "asc" ? "desc" : "asc"); }}>
@@ -785,7 +785,7 @@ export default function UsersTable({
                     <tr
                       key={sysUser.id}
                       className={`hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition ${
-                        isSelected ? "bg-indigo-50/30 dark:bg-indigo-950/10" : ""
+                        isSelected ? "bg-blue-50/30 dark:bg-blue-950/10" : ""
                       } ${isDeleted ? "opacity-75 bg-slate-50/30 dark:bg-slate-950/10" : ""}`}
                     >
                       <td className="p-4">
@@ -794,7 +794,7 @@ export default function UsersTable({
                           disabled={isSuperAdmin || isSelf}
                           checked={isSelected}
                           onChange={(e) => handleSelectUser(sysUser.id, e.target.checked)}
-                          className="rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                          className="rounded border-slate-300 dark:border-slate-700 text-blue-600 focus:ring-blue-500 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
                         />
                       </td>
 
@@ -807,7 +807,7 @@ export default function UsersTable({
                             <span className="font-semibold text-slate-950 dark:text-slate-100 block flex items-center gap-1.5">
                               {sysUser.full_name}
                               {isSelf && (
-                                <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold bg-indigo-50 dark:bg-indigo-950/40 px-1.5 py-0.2 rounded-full border border-indigo-100 dark:border-indigo-900/40">
+                                <span className="text-[10px] text-blue-600 dark:text-blue-400 font-bold bg-blue-50 dark:bg-blue-950/40 px-1.5 py-0.2 rounded-full border border-blue-100 dark:border-blue-900/40">
                                   You
                                 </span>
                               )}
@@ -845,7 +845,7 @@ export default function UsersTable({
                             {(rolePermissions[sysUser.role] || []).slice(0, 3).map((p: string) => (
                               <span
                                 key={p}
-                                className="text-[9px] font-medium bg-indigo-50/50 dark:bg-indigo-950/20 text-indigo-600 dark:text-indigo-400 border border-indigo-100/20 dark:border-indigo-900/20 px-1 rounded-sm"
+                                className="text-[9px] font-medium bg-blue-50/50 dark:bg-blue-950/20 text-blue-600 dark:text-blue-400 border border-blue-100/20 dark:border-blue-900/20 px-1 rounded-sm"
                               >
                                 {p.split("_").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")}
                               </span>
@@ -905,7 +905,7 @@ export default function UsersTable({
                           <button
                             onClick={() => setEditModal({ isOpen: true, user: { ...sysUser } })}
                             disabled={isSuperAdmin || isSelf}
-                            className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 rounded cursor-pointer disabled:opacity-30 disabled:hover:bg-transparent"
+                            className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 rounded cursor-pointer disabled:opacity-30 disabled:hover:bg-transparent"
                             title="Edit operator settings"
                           >
                             <Edit2 className="h-4 w-4" />
@@ -938,7 +938,7 @@ export default function UsersTable({
                                       }}
                                       className="w-full px-3 py-1.5 text-[11px] font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2"
                                     >
-                                      <RefreshCw className="h-3.5 w-3.5 text-purple-500" />
+                                      <RefreshCw className="h-3.5 w-3.5 text-emerald-500" />
                                       Restore Account
                                     </button>
                                   ) : (
@@ -982,7 +982,7 @@ export default function UsersTable({
                                         }}
                                         className="w-full px-3 py-1.5 text-[11px] font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2"
                                       >
-                                        <Settings className="h-3.5 w-3.5 text-indigo-500" />
+                                        <Settings className="h-3.5 w-3.5 text-blue-500" />
                                         Force Pass Change
                                       </button>
 
@@ -1085,7 +1085,7 @@ export default function UsersTable({
                     ? "bg-rose-600 hover:bg-rose-750 shadow-sm shadow-rose-600/10"
                     : confirmDialog.type === "warning"
                     ? "bg-amber-600 hover:bg-amber-700 shadow-sm"
-                    : "bg-indigo-600 hover:bg-indigo-700 shadow-sm"
+                    : "bg-blue-600 hover:bg-blue-700 shadow-sm"
                 }`}
               >
                 Confirm Action
@@ -1103,7 +1103,7 @@ export default function UsersTable({
           <div className="relative w-full max-w-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl p-6 text-left animate-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/85 pb-3 mb-4">
               <div className="flex items-center gap-2">
-                <Edit2 className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                <Edit2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                 <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
                   Update Operator Account
                 </h3>
@@ -1237,7 +1237,7 @@ export default function UsersTable({
               </button>
               <button
                 type="submit"
-                className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg cursor-pointer shadow-sm shadow-indigo-600/10"
+                className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg cursor-pointer shadow-sm shadow-blue-600/10"
               >
                 Save Changes
               </button>
@@ -1255,7 +1255,7 @@ export default function UsersTable({
         <div className="relative w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl p-6 text-left animate-in zoom-in-95 duration-150 text-slate-900 dark:text-slate-100">
           <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/85 pb-3 mb-4">
             <h3 className="text-sm font-bold flex items-center gap-2">
-              <User className="h-5 w-5 text-indigo-600" />
+              <User className="h-5 w-5 text-blue-600" />
               Administrative Profile
             </h3>
             <button
@@ -1268,7 +1268,7 @@ export default function UsersTable({
 
           <div className="space-y-4 text-xs">
             <div className="flex items-center gap-3 bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-250/20">
-              <div className="h-12 w-12 rounded-full bg-indigo-600 text-white flex items-center justify-center text-lg font-bold">
+              <div className="h-12 w-12 rounded-full bg-blue-600 text-white flex items-center justify-center text-lg font-bold">
                 {viewModal.user.full_name?.charAt(0)}
               </div>
               <div>
@@ -1281,25 +1281,25 @@ export default function UsersTable({
               <div className="bg-slate-50/50 dark:bg-slate-950/20 p-2.5 rounded-lg border border-slate-100 dark:border-slate-800">
                 <span className="text-[10px] text-slate-500 block uppercase font-semibold">Email</span>
                 <span className="font-medium flex items-center gap-1 mt-0.5">
-                  <Mail className="h-3.5 w-3.5 text-indigo-500" /> {viewModal.user.email}
+                  <Mail className="h-3.5 w-3.5 text-blue-500" /> {viewModal.user.email}
                 </span>
               </div>
               <div className="bg-slate-50/50 dark:bg-slate-950/20 p-2.5 rounded-lg border border-slate-100 dark:border-slate-800">
                 <span className="text-[10px] text-slate-500 block uppercase font-semibold">Phone</span>
                 <span className="font-medium flex items-center gap-1 mt-0.5">
-                  <Phone className="h-3.5 w-3.5 text-indigo-500" /> {viewModal.user.phone_number || "None"}
+                  <Phone className="h-3.5 w-3.5 text-blue-500" /> {viewModal.user.phone_number || "None"}
                 </span>
               </div>
               <div className="bg-slate-50/50 dark:bg-slate-950/20 p-2.5 rounded-lg border border-slate-100 dark:border-slate-800">
                 <span className="text-[10px] text-slate-500 block uppercase font-semibold">Role</span>
-                <span className="font-bold flex items-center gap-1 mt-0.5 text-indigo-600">
+                <span className="font-bold flex items-center gap-1 mt-0.5 text-blue-600">
                   <Shield className="h-3.5 w-3.5" /> {viewModal.user.role?.split("_").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")}
                 </span>
               </div>
               <div className="bg-slate-50/50 dark:bg-slate-950/20 p-2.5 rounded-lg border border-slate-100 dark:border-slate-800">
                 <span className="text-[10px] text-slate-500 block uppercase font-semibold">Region</span>
                 <span className="font-medium flex items-center gap-1 mt-0.5">
-                  <MapPin className="h-3.5 w-3.5 text-indigo-500" /> {viewModal.user.region} Region
+                  <MapPin className="h-3.5 w-3.5 text-blue-500" /> {viewModal.user.region} Region
                 </span>
               </div>
             </div>
@@ -1310,7 +1310,7 @@ export default function UsersTable({
                 {(rolePermissions[viewModal.user.role] || []).map((p: string) => (
                   <span
                     key={p}
-                    className="text-[9px] font-medium bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 border border-slate-200 dark:border-slate-800 px-1.5 py-0.5 rounded"
+                    className="text-[9px] font-medium bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 border border-slate-200 dark:border-slate-800 px-1.5 py-0.5 rounded"
                   >
                     {p.split("_").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")}
                   </span>
@@ -1338,7 +1338,7 @@ export default function UsersTable({
         <div className="relative w-full max-w-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl p-6 text-left animate-in zoom-in-95 duration-150">
           <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/85 pb-3 mb-4">
             <h3 className="text-sm font-bold flex items-center gap-2">
-              <Upload className="h-5 w-5 text-indigo-600" />
+              <Upload className="h-5 w-5 text-blue-600" />
               Import Administrative Accounts
             </h3>
             <button
@@ -1380,7 +1380,7 @@ export default function UsersTable({
             />
 
             {importFeedback && (
-              <div className="p-3 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-400 border border-indigo-150 dark:border-indigo-900/40 rounded-lg font-semibold">
+              <div className="p-3 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400 border border-blue-150 dark:border-blue-900/40 rounded-lg font-semibold">
                 {importFeedback}
               </div>
             )}
@@ -1397,7 +1397,7 @@ export default function UsersTable({
               </button>
               <button
                 onClick={handleBulkImport}
-                className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg cursor-pointer shadow-sm shadow-indigo-600/10"
+                className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg cursor-pointer shadow-sm shadow-blue-600/10"
               >
                 Process JSON Import
               </button>
