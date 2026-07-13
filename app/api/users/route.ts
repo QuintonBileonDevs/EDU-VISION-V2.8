@@ -225,6 +225,27 @@ export async function POST(req: NextRequest) {
           };
           if (roleIdMap[role]) {
             roleId = roleIdMap[role];
+          } else {
+            // It is a custom role name and not in the database roles table.
+            // Let's dynamically insert it into the roles table to support custom roles in legacy schema!
+            const cleanRole = role.trim().toLowerCase().replace(/[^a-z0-9_]/g, "");
+            if (cleanRole) {
+              const displayName = cleanRole
+                .replace(/[_-]/g, " ")
+                .split(" ")
+                .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
+                .join(" ");
+              try {
+                const [insertRes]: any = await db.query(
+                  "INSERT INTO `roles` (`role_name`, `role_display_name`, `role_description`, `is_system`) VALUES (?, ?, ?, 0)",
+                  [cleanRole, displayName, `Custom role for ${displayName}`]
+                );
+                roleId = insertRes.insertId;
+              } catch (insErr) {
+                console.error("Failed to insert custom role into legacy roles table, falling back to 8:", insErr);
+                roleId = 8;
+              }
+            }
           }
         }
       } catch (roleErr) {

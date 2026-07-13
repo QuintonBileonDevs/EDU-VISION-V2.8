@@ -25,7 +25,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Eye,
-  Settings
+  Settings,
+  UserPlus
 } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 
@@ -103,6 +104,32 @@ export default function UsersTable({
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [importText, setImportText] = useState("");
   const [importFeedback, setImportFeedback] = useState<string | null>(null);
+
+  // User Provisioning states
+  const [provisionModalOpen, setProvisionModalOpen] = useState(false);
+  const [provisionForm, setProvisionForm] = useState({
+    username: "",
+    email: "",
+    full_name: "",
+    role: "",
+    region: "All",
+    password: "",
+    status: "Active"
+  });
+  const [provisionError, setProvisionError] = useState<string | null>(null);
+  const [provisionSuccess, setProvisionSuccess] = useState(false);
+  const [provisioning, setProvisioning] = useState(false);
+  const [isCustomRole, setIsCustomRole] = useState(false);
+  const [customRoleText, setCustomRoleText] = useState("");
+
+  useEffect(() => {
+    if (availableRoles.length > 0 && !provisionForm.role) {
+      setProvisionForm(prev => ({
+        ...prev,
+        role: availableRoles.includes("school_admin") ? "school_admin" : availableRoles[0]
+      }));
+    }
+  }, [availableRoles, provisionForm.role]);
 
   // Active Dropdowns
   const [activeDropdownId, setActiveDropdownId] = useState<number | null>(null);
@@ -363,6 +390,84 @@ export default function UsersTable({
       }
     } catch (err) {
       console.error("Save edit user error:", err);
+    }
+  };
+
+  const handleFullNameChange = (name: string) => {
+    setProvisionForm(prev => {
+      const updated = { ...prev, full_name: name };
+      const expectedOldSuggestion = prev.full_name.toLowerCase().trim().replace(/\s+/g, ".");
+      if (!prev.username || prev.username === expectedOldSuggestion) {
+        updated.username = name.toLowerCase().trim().replace(/\s+/g, ".");
+      }
+      return updated;
+    });
+  };
+
+  const handleGeneratePassword = () => {
+    const chars = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789!@#$%&*";
+    let password = "";
+    for (let i = 0; i < 12; i++) {
+      password += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setProvisionForm(prev => ({ ...prev, password }));
+  };
+
+  const handleProvisionUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setProvisionError(null);
+    setProvisionSuccess(false);
+    setProvisioning(true);
+
+    const targetRole = isCustomRole ? customRoleText.trim().toLowerCase().replace(/[^a-z0-9_]/g, "_") : provisionForm.role;
+
+    if (!targetRole) {
+      setProvisionError("Please specify a valid role name.");
+      setProvisioning(false);
+      return;
+    }
+
+    const payload = {
+      ...provisionForm,
+      role: targetRole
+    };
+
+    try {
+      const res = await fetch("/api/users", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-id": currentUser?.id?.toString() || "1"
+        },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setProvisionSuccess(true);
+        fetchUsers();
+        if (onRefreshStats) onRefreshStats();
+        setProvisionForm({
+          username: "",
+          email: "",
+          full_name: "",
+          role: availableRoles.includes("school_admin") ? "school_admin" : (availableRoles[0] || ""),
+          region: "All",
+          password: "",
+          status: "Active"
+        });
+        setIsCustomRole(false);
+        setCustomRoleText("");
+        setTimeout(() => {
+          setProvisionModalOpen(false);
+          setProvisionSuccess(false);
+        }, 1500);
+      } else {
+        setProvisionError(data.error || "Failed to provision new user account.");
+      }
+    } catch (err: any) {
+      setProvisionError(err.message || "An unexpected error occurred.");
+    } finally {
+      setProvisioning(false);
     }
   };
 
@@ -651,6 +756,13 @@ export default function UsersTable({
             </select>
 
             {/* Bulk Actions Button Group triggers */}
+            <button
+              onClick={() => setProvisionModalOpen(true)}
+              className="flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white border border-transparent rounded-lg text-xs px-3 py-2 cursor-pointer font-bold shadow-sm shadow-blue-500/10 transition-colors"
+            >
+              <UserPlus className="h-3.5 w-3.5" />
+              Provision User
+            </button>
             <button
               onClick={() => setImportModalOpen(true)}
               className="flex items-center gap-1 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-lg text-xs px-3 py-2 cursor-pointer font-semibold"
@@ -1403,6 +1515,236 @@ export default function UsersTable({
               </button>
             </div>
           </div>
+        </div>
+      </div>
+    )}
+
+    {/* ----------------------------------------------------
+        PROVISION SINGLE USER DIALOG MODAL
+        ---------------------------------------------------- */}
+    {provisionModalOpen && (
+      <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+        <div className="relative w-full max-w-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl p-6 text-left animate-in zoom-in-95 duration-150">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/85 pb-3 mb-4">
+            <div className="flex items-center gap-2">
+              <UserPlus className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                Provision New Administrator
+              </h3>
+            </div>
+            <button
+              onClick={() => {
+                setProvisionModalOpen(false);
+                setProvisionError(null);
+                setProvisionSuccess(false);
+              }}
+              className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded text-slate-400 hover:text-slate-600"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          <form onSubmit={handleProvisionUser} className="space-y-4 text-xs">
+            {provisionError && (
+              <div className="p-3 bg-rose-50 dark:bg-rose-950/20 text-rose-700 dark:text-rose-400 border border-rose-100 dark:border-rose-900/20 rounded-lg font-medium flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 shrink-0 text-rose-500" />
+                <span>{provisionError}</span>
+              </div>
+            )}
+
+            {provisionSuccess && (
+              <div className="p-3 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/20 rounded-lg font-medium flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 shrink-0 text-emerald-500" />
+                <span>Account provisioned successfully! Closing...</span>
+              </div>
+            )}
+
+            <div>
+              <label className="block font-semibold text-slate-600 dark:text-slate-400 mb-1">Full Name</label>
+              <input
+                type="text"
+                required
+                value={provisionForm.full_name}
+                onChange={(e) => handleFullNameChange(e.target.value)}
+                placeholder="e.g. Kgomotso Moroka"
+                className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block font-semibold text-slate-600 dark:text-slate-400 mb-1">Username</label>
+                <input
+                  type="text"
+                  required
+                  value={provisionForm.username}
+                  onChange={(e) =>
+                    setProvisionForm({
+                      ...provisionForm,
+                      username: e.target.value.toLowerCase().replace(/\s+/g, "")
+                    })
+                  }
+                  placeholder="e.g. kgomotsom"
+                  className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-600 dark:text-slate-400 mb-1">Email Address</label>
+                <input
+                  type="email"
+                  required
+                  value={provisionForm.email}
+                  onChange={(e) =>
+                    setProvisionForm({
+                      ...provisionForm,
+                      email: e.target.value
+                    })
+                  }
+                  placeholder="e.g. km@gov.bw"
+                  className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block font-semibold text-slate-600 dark:text-slate-400 mb-1">Password</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  required
+                  value={provisionForm.password}
+                  onChange={(e) =>
+                    setProvisionForm({
+                      ...provisionForm,
+                      password: e.target.value
+                    })
+                  }
+                  placeholder="Enter secure password"
+                  className="flex-1 px-3 py-2 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-lg font-mono focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+                <button
+                  type="button"
+                  onClick={handleGeneratePassword}
+                  className="px-3 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold rounded-lg cursor-pointer transition flex items-center gap-1 shrink-0"
+                >
+                  <Key className="h-3 w-3" />
+                  Generate
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="block font-semibold text-slate-600 dark:text-slate-400 mb-1">Assigned Role</label>
+                <select
+                  value={isCustomRole ? "__custom__" : provisionForm.role}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === "__custom__") {
+                      setIsCustomRole(true);
+                    } else {
+                      setIsCustomRole(false);
+                      setProvisionForm({
+                        ...provisionForm,
+                        role: val
+                      });
+                    }
+                  }}
+                  className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-lg cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500"
+                >
+                  {availableRoles.map((r) => (
+                    <option key={r} value={r}>
+                      {r.split("_").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")}
+                    </option>
+                  ))}
+                  <option value="__custom__">+ Custom Role...</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-600 dark:text-slate-400 mb-1">Scope Region</label>
+                <select
+                  value={provisionForm.region}
+                  onChange={(e) =>
+                    setProvisionForm({
+                      ...provisionForm,
+                      region: e.target.value
+                    })
+                  }
+                  className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-lg cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="All">All Regions</option>
+                  {availableRegions.map((reg) => (
+                    <option key={reg} value={reg}>
+                      {reg}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-600 dark:text-slate-400 mb-1">Account State</label>
+                <select
+                  value={provisionForm.status}
+                  onChange={(e) =>
+                    setProvisionForm({
+                      ...provisionForm,
+                      status: e.target.value
+                    })
+                  }
+                  className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-lg cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="Active">Active</option>
+                  <option value="Inactive">Suspended</option>
+                </select>
+              </div>
+            </div>
+
+            {isCustomRole && (
+              <div className="p-3 bg-slate-50 dark:bg-slate-950/30 border border-slate-100 dark:border-slate-800/80 rounded-xl space-y-1.5 animate-fadeIn">
+                <label className="block font-semibold text-slate-600 dark:text-slate-400">Custom Role Name</label>
+                <input
+                  type="text"
+                  required
+                  value={customRoleText}
+                  onChange={(e) => setCustomRoleText(e.target.value)}
+                  placeholder="e.g. academic_director, support_analyst"
+                  className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+                <span className="text-[10px] text-slate-400 block leading-normal">
+                  The custom role identifier will be converted to lowercase with underscores (e.g., <b>support_analyst</b>) and dynamically registered.
+                </span>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 border-t border-slate-100 dark:border-slate-800/80 pt-4 mt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setProvisionModalOpen(false);
+                  setProvisionError(null);
+                  setProvisionSuccess(false);
+                }}
+                className="px-3.5 py-1.5 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg cursor-pointer font-semibold"
+                disabled={provisioning}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg cursor-pointer shadow-sm shadow-blue-600/10 flex items-center gap-1.5"
+                disabled={provisioning}
+              >
+                {provisioning ? (
+                  <RefreshCw className="h-3 w-3 animate-spin" />
+                ) : (
+                  <UserPlus className="h-3 w-3" />
+                )}
+                {provisioning ? "Provisioning..." : "Provision Account"}
+              </button>
+            </div>
+          </form>
         </div>
       </div>
     )}
