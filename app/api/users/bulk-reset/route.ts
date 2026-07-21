@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { getDbPool, initializeDatabase, detectUsersSchema, sha256 } from "@/lib/db";
 import { logAudit } from "@/lib/audit";

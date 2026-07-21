@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { getDbPool, initializeDatabase, sha256, detectUsersSchema } from "@/lib/db";
 
@@ -32,13 +33,15 @@ export async function POST(req: NextRequest) {
           u.full_name, 
           r.role_name AS role, 
           IF(u.is_active = 1, 'Active', 'Inactive') AS status, 
-          'All' AS region 
+          COALESCE(u.region, 'All') AS region,
+          COALESCE(u.sub_region, 'All') AS sub_region,
+          u.school
         FROM users u 
         LEFT JOIN roles r ON u.role_id = r.role_id 
         WHERE LOWER(u.username) = ? OR LOWER(u.email) = ?
       `;
     } else {
-      query = "SELECT id, username, password_hash, email, full_name, role, status, region FROM `users` WHERE LOWER(username) = ? OR LOWER(email) = ?";
+      query = "SELECT id, username, password_hash, email, full_name, role, status, region, COALESCE(sub_region, 'All') AS sub_region, school FROM `users` WHERE LOWER(username) = ? OR LOWER(email) = ?";
     }
 
     const [rows]: any = await db.query(query, [normalized, normalized]);
@@ -92,6 +95,8 @@ export async function POST(req: NextRequest) {
         full_name: user.full_name,
         role: user.role,
         region: user.region,
+        sub_region: user.sub_region,
+        school: user.school,
         status: user.status
       }
     });

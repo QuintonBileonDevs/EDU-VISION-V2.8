@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import UsersTable from "@/components/UsersTable";
+import { RegionalAdminDashboard } from "@/components/RegionalAdminDashboard";
 import {
   SuperAdminOverview,
   SuperAdminInsights,
@@ -61,6 +62,8 @@ interface UserSession {
   full_name: string;
   role: string;
   region: string;
+  sub_region?: string;
+  school?: string;
   status: string;
 }
 
@@ -167,26 +170,32 @@ export default function Page() {
     school_admin: ["view_own_school", "view_students", "manage_students", "view_staff", "manage_staff", "view_inventory", "view_reports"]
   });
 
-  const isAdministrator = user?.role === "super_admin" || user?.role === "emis_admin";
+  const isAdministrator = user?.role === "super_admin" || user?.role === "emis_admin" || user?.role === "region_admin" || user?.role === "regional_admin" || user?.role === "sub_regional_admin";
 
   const adminTabs = React.useMemo(() => {
     if (!user) return [];
-    const baseTabs = [
-      { id: "insights", label: "National EMIS Insights", icon: Activity },
-      { id: "users", label: "User & Access Management", icon: Users },
-      { id: "config", label: "System Configuration", icon: Settings },
-      { id: "data", label: "Data Management", icon: Database },
-      { id: "reference", label: "Reference Data Management", icon: FileText },
-      { id: "academic", label: "Academic Management", icon: GraduationCap },
-      { id: "regions", label: "School & Region Management", icon: Map },
-      { id: "security", label: "Security & Monitoring", icon: ShieldAlert },
-      { id: "health", label: "System Health", icon: ActivitySquare }
-    ];
     if (user.role === "super_admin") {
-      return baseTabs;
+      return [
+        { id: "insights", label: "National EMIS Insights", icon: Activity },
+        { id: "users", label: "User & Access Management", icon: Users },
+        { id: "config", label: "System Configuration", icon: Settings },
+        { id: "data", label: "Data Management", icon: Database },
+        { id: "security", label: "Security & Monitoring", icon: ShieldAlert },
+        { id: "health", label: "System Health", icon: ActivitySquare }
+      ];
     } else if (user.role === "emis_admin") {
-      // Remove "data" (Data Management) tab for EMIS Admin
-      return baseTabs.filter(tab => tab.id !== "data");
+      return [
+        { id: "insights", label: "Regional Admin Dashboard", icon: Activity },
+        { id: "reference", label: "Reference Data Management", icon: FileText },
+        { id: "academic", label: "Academic Management", icon: GraduationCap },
+        { id: "regions", label: "School & Region Management", icon: Map }
+      ];
+    } else if (user.role === "region_admin" || user.role === "regional_admin" || user.role === "sub_regional_admin") {
+      return [
+        { id: "insights", label: "Regional Admin Dashboard", icon: Activity },
+        { id: "regions", label: "School & Region Management", icon: Map },
+        { id: "users", label: "User Management", icon: Users }
+      ];
     }
     return [];
   }, [user]);
@@ -792,7 +801,20 @@ export default function Page() {
             <User className="h-3.5 w-3.5 text-slate-500 dark:text-slate-400" />
             <div>
               <span className="font-semibold block text-slate-850 dark:text-slate-200">{user.full_name}</span>
-              <span className="text-[10px] text-slate-500 dark:text-slate-400 capitalize">{user.role.replace(/_/g, " ")} ({user.region} Region)</span>
+              <span className="text-[10px] text-slate-500 dark:text-slate-400 capitalize">
+                {user.role.replace(/_/g, " ")} 
+                {user.role === "super_admin" || user.role === "emis_admin" 
+                  ? " (Global Access)" 
+                  : user.role === "regional_admin" || user.role === "region_admin"
+                    ? ` (${user.region} Region)` 
+                    : user.role === "sub_regional_admin" 
+                      ? ` (${user.sub_region && user.sub_region !== 'All' ? user.sub_region : user.region} Sub-region)`
+                      : user.role === "school_admin"
+                        ? ` (${user.school || "Unassigned School"})`
+                        : user.role === "teacher"
+                          ? ` (${user.school || "Unassigned School"})`
+                          : ` (${user.region} Region)`}
+              </span>
             </div>
           </div>
 
@@ -847,9 +869,9 @@ export default function Page() {
                 <button
                   key={tab.id}
                   onClick={() => setSuperTab(tab.id as any)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all duration-200 cursor-pointer ${
                     isSelected
-                      ? "bg-slate-900 dark:bg-slate-850 text-white shadow-sm"
+                      ? "bg-blue-600 text-white shadow-md shadow-blue-500/20 border border-blue-500/10 scale-[1.02]"
                       : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-slate-800/50"
                   }`}
                 >
@@ -1360,10 +1382,14 @@ export default function Page() {
         /* Super Admin Tabs Display */
         <main className="flex-1 max-w-7xl w-full mx-auto p-6 space-y-6">
           {superTab === "insights" && (
-            <div className="space-y-6">
-              <SuperAdminOverview />
-              <SuperAdminInsights />
-            </div>
+            user?.role === "super_admin" ? (
+              <div className="space-y-6">
+                <SuperAdminOverview />
+                <SuperAdminInsights />
+              </div>
+            ) : (
+              <RegionalAdminDashboard user={user} />
+            )
           )}
 
           {superTab === "users" && (
@@ -1383,7 +1409,7 @@ export default function Page() {
           {superTab === "data" && user?.role === "super_admin" && <SuperAdminData />}
           {superTab === "reference" && <SuperAdminReference />}
           {superTab === "academic" && <SuperAdminAcademic />}
-          {superTab === "regions" && <SuperAdminRegions />}
+          {superTab === "regions" && <SuperAdminRegions currentUser={user} />}
           {superTab === "security" && <SuperAdminSecurity />}
           {superTab === "health" && <SuperAdminHealth />}
         </main>

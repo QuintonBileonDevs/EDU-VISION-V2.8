@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDbPool, initializeDatabase } from "@/lib/db";
+import { getDbPool, initializeDatabase, detectUsersSchema } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
@@ -8,6 +8,7 @@ export async function GET() {
   try {
     await initializeDatabase();
     const db = getDbPool();
+    const schema = await detectUsersSchema();
 
     // 1. Fetch all permissions from database
     const [perms]: any = await db.query(
@@ -31,18 +32,29 @@ export async function GET() {
       rolePermissionsMap[role].push(permission_name);
     });
 
-    // 4. Fetch roles from the roles table
-    const [rolesRes]: any = await db.query(
-      "SELECT DISTINCT `role_name` FROM `roles` WHERE `deleted_at` IS NULL ORDER BY `role_name`"
-    );
-    const uniqueRoles = rolesRes.map((r: any) => r.role_name);
+    // 4. Fetch unique roles from users table
+    let uniqueRoles: string[] = [];
+    if (schema === "legacy") {
+      // Legacy schema uses role_id, but doesn't have a 'role' column natively.
+      // We will just fall back to the roles mapped in role_permissions table.
+      uniqueRoles = Object.keys(rolePermissionsMap);
+    } else {
+      const [rolesRes]: any = await db.query(
+        "SELECT DISTINCT `role` FROM `users` WHERE `status` = 'Active' ORDER BY `role`"
+      );
+      uniqueRoles = rolesRes.map((r: any) => r.role);
+    }
+
+    // Merge with roles defined in role_permissions table
+    const allRolesSet = new Set([...uniqueRoles, ...Object.keys(rolePermissionsMap)]);
+    uniqueRoles = Array.from(allRolesSet);
 
     // 5. Ensure we have fallback mappings if empty, but otherwise use database
     return NextResponse.json({
       success: true,
       permissions: perms,
       role_permissions: rolePermissionsMap,
-      roles: uniqueRoles.length > 0 ? uniqueRoles : Object.keys(rolePermissionsMap)
+      roles: uniqueRoles
     });
   } catch (error: any) {
     console.error("GET roles error:", error);
@@ -90,36 +102,17 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // 1.5 Ensure role exists in roles table
-    const [existingRole]: any = await db.query(
-      "SELECT `role_id` FROM `roles` WHERE `role_name` = ? AND `deleted_at` IS NULL",
-      [targetRole]
-    );
-    let roleId: number;
-    if (!existingRole || existingRole.length === 0) {
-      const displayName = targetRole
-        .replace(/[_-]/g, " ")
-        .split(" ")
-        .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(" ");
-      const [insertRes]: any = await db.query(
-        "INSERT INTO `roles` (`role_name`, `role_display_name`, `role_description`, `is_system`) VALUES (?, ?, ?, 0)",
-        [targetRole, displayName, `Custom role for ${displayName}`]
-      );
-      roleId = insertRes.insertId;
-    } else {
-      roleId = existingRole[0].role_id;
-    }
-
+    // 1.5 No need to ensure role exists in roles table as it doesn't exist.
+    
     // 2. Perform updates in a clean sequence
     // First, delete existing role permissions for this role to avoid duplicate primary keys or duplicates
     await db.query("DELETE FROM `role_permissions` WHERE `role` = ?", [targetRole]);
 
     // Insert new permission maps if any are selected
     if (targetPermissionIds.length > 0) {
-      const insertValues = targetPermissionIds.map((id) => [targetRole, id, roleId]);
+      const insertValues = targetPermissionIds.map((id) => [targetRole, id]);
       await db.query(
-        "INSERT INTO `role_permissions` (`role`, `permission_id`, `role_id`) VALUES ?",
+        "INSERT INTO `role_permissions` (`role`, `permission_id`) VALUES ?",
         [insertValues]
       );
     }

@@ -88,9 +88,23 @@ export async function initializeDatabase() {
       \`role\` VARCHAR(100) NOT NULL,
       \`status\` VARCHAR(50) DEFAULT 'Active',
       \`region\` VARCHAR(100) DEFAULT 'All',
+      \`sub_region\` VARCHAR(100) DEFAULT 'All',
+      \`school\` VARCHAR(255) DEFAULT NULL,
       \`last_login\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
   `);
+
+  try {
+    await db.query("ALTER TABLE `users` ADD COLUMN `sub_region` VARCHAR(100) DEFAULT 'All'");
+  } catch (err) {
+    // Column might already exist, which is fine
+  }
+  
+  try {
+    await db.query("ALTER TABLE `users` ADD COLUMN `school` VARCHAR(255) DEFAULT NULL");
+  } catch (err) {
+    // Column might already exist, which is fine
+  }
 
   // Create school registries table (students, teachers, dropouts, etc.)
   await db.query(`
@@ -182,7 +196,9 @@ export async function initializeDatabase() {
       super_admin: ["view_all_schools", "manage_all_schools", "view_region_schools", "manage_region_schools", "view_subregion_schools", "manage_subregion_schools", "view_own_school", "manage_own_school", "view_students", "manage_students", "view_staff", "manage_staff", "view_inventory", "manage_inventory", "view_reports", "manage_users", "view_audit_log", "manage_policies"],
       emis_admin: ["view_all_schools", "manage_all_schools", "view_region_schools", "manage_region_schools", "view_subregion_schools", "manage_subregion_schools", "view_own_school", "manage_own_school", "view_students", "manage_students", "view_staff", "manage_staff", "view_inventory", "manage_inventory", "view_reports", "manage_users", "manage_policies"],
       region_admin: ["view_region_schools", "manage_region_schools", "view_students", "manage_students", "view_staff", "manage_staff", "view_inventory", "manage_inventory", "view_reports"],
+      regional_admin: ["view_region_schools", "manage_region_schools", "view_students", "manage_students", "view_staff", "manage_staff", "view_inventory", "manage_inventory", "view_reports"],
       subregion_admin: ["view_subregion_schools", "manage_subregion_schools", "view_students", "manage_students", "view_staff", "manage_staff", "view_inventory", "manage_inventory"],
+      sub_regional_admin: ["view_subregion_schools", "manage_subregion_schools", "view_students", "manage_students", "view_staff", "manage_staff", "view_inventory", "manage_inventory"],
       school_head: ["view_own_school", "manage_own_school", "view_students", "manage_students", "view_staff", "manage_staff", "view_inventory", "manage_inventory"],
       school_admin: ["view_own_school", "view_students", "manage_students", "view_staff", "manage_staff", "view_inventory", "view_reports"],
       data_entry_clerk: ["view_students", "manage_students", "view_staff", "manage_staff", "view_inventory"],
@@ -190,28 +206,18 @@ export async function initializeDatabase() {
       report_viewer: ["view_reports"]
     };
 
-    // Fetch existing roles to map role_name to role_id
-    const [rolesRes]: any = await db.query("SELECT `role_id`, `role_name` FROM `roles` WHERE `deleted_at` IS NULL");
-    const roleIdMap: Record<string, number> = {};
-    rolesRes.forEach((r: any) => {
-      roleIdMap[r.role_name] = r.role_id;
-    });
-
     const insertValues: any[] = [];
     Object.entries(defaultRolePerms).forEach(([role, perms]) => {
-      const rId = roleIdMap[role];
-      if (rId) {
-        perms.forEach((pName) => {
-          const id = permIdMap[pName];
-          if (id) {
-            insertValues.push([role, id, rId]);
-          }
-        });
-      }
+      perms.forEach((pName) => {
+        const id = permIdMap[pName];
+        if (id) {
+          insertValues.push([role, id]);
+        }
+      });
     });
 
     if (insertValues.length > 0) {
-      await db.query("INSERT INTO `role_permissions` (`role`, `permission_id`, `role_id`) VALUES ?", [insertValues]);
+      await db.query("INSERT INTO `role_permissions` (`role`, `permission_id`) VALUES ?", [insertValues]);
     }
   }
 
@@ -463,11 +469,9 @@ export async function initializeDatabase() {
       [pId]
     );
     if (!mapExists || mapExists.length === 0) {
-      const [superRole]: any = await db.query("SELECT role_id FROM `roles` WHERE `role_name` = 'super_admin' AND `deleted_at` IS NULL");
-      const rId = superRole && superRole.length > 0 ? superRole[0].role_id : 1;
       await db.query(
-        "INSERT INTO `role_permissions` (`role`, `permission_id`, `role_id`) VALUES (?, ?, ?)",
-        ["super_admin", pId, rId]
+        "INSERT INTO `role_permissions` (`role`, `permission_id`) VALUES (?, ?)",
+        ["super_admin", pId]
       );
     }
   }

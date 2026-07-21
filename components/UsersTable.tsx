@@ -42,6 +42,8 @@ interface UserRecord {
   role_display_name?: string;
   status: string;
   region: string;
+  sub_region?: string;
+  school?: string;
   last_login?: string;
   created_at?: string;
   deleted_at?: string | null;
@@ -49,13 +51,26 @@ interface UserRecord {
 }
 
 interface UsersTableProps {
-  currentUser: { id: number; username: string; role: string } | null;
+  currentUser: { id: number; username: string; role: string; region?: string; sub_region?: string } | null;
   availableRegions: string[];
   availableRoles: string[];
   rolePermissions: Record<string, string[]>;
   onConfigureRole: (roleName: string) => void;
   onRefreshStats?: () => void;
 }
+
+const regionSubregions: Record<string, string[]> = {
+  "Central": ["Serowe", "Palapye", "Mahalapye", "Bobonong", "Tutume"],
+  "Chobe": ["Kasane", "Pandamatenga"],
+  "Gantsi": ["Ghanzi", "Charles Hill"],
+  "Kgalagadi": ["Tshabong", "Hukuntsi"],
+  "Kgatleng": ["Mochudi", "Artesia"],
+  "Kweneng": ["Molepolole", "Letlhakeng"],
+  "North East": ["Masunga", "Francistown"],
+  "North West": ["Maun", "Gumare", "Shakawe"],
+  "South": ["Kanye", "Moshupa", "Goodhope"],
+  "South East": ["Gaborone", "Ramotswa", "Tlokweng"]
+};
 
 export default function UsersTable({
   currentUser,
@@ -67,6 +82,22 @@ export default function UsersTable({
 }: UsersTableProps) {
   // Permissions hook
   const { hasPermission } = usePermissions(currentUser?.id);
+
+  // Derived assignable roles based on current user's role hierarchy
+  const assignableRoles = availableRoles.filter(r => {
+    if (!currentUser) return true;
+    if (currentUser.role === "super_admin" || currentUser.role === "emis_admin") return true;
+    
+    if (currentUser.role === "region_admin" || currentUser.role === "regional_admin") {
+      return !["super_admin", "emis_admin", "region_admin", "regional_admin"].includes(r);
+    }
+    
+    if (currentUser.role === "sub_regional_admin") {
+      return !["super_admin", "emis_admin", "region_admin", "regional_admin", "sub_regional_admin"].includes(r);
+    }
+    
+    return true;
+  });
 
   // Pagination & Filter States
   const [users, setUsers] = useState<UserRecord[]>([]);
@@ -137,6 +168,10 @@ export default function UsersTable({
   const [importText, setImportText] = useState("");
   const [importFeedback, setImportFeedback] = useState<string | null>(null);
 
+  const isCurrentUserGlobalAdmin = currentUser?.role === "super_admin" || currentUser?.role === "emis_admin";
+  const initialRegion = isCurrentUserGlobalAdmin ? "All" : (currentUser?.region || "Central");
+  const initialSubRegion = isCurrentUserGlobalAdmin ? "All" : (currentUser?.sub_region || "All");
+
   // User Provisioning states
   const [provisionModalOpen, setProvisionModalOpen] = useState(false);
   const [provisionForm, setProvisionForm] = useState({
@@ -144,7 +179,9 @@ export default function UsersTable({
     email: "",
     full_name: "",
     role: "",
-    region: "All",
+    region: initialRegion,
+    sub_region: initialSubRegion,
+    school: "",
     password: "",
     status: "Active"
   });
@@ -157,13 +194,13 @@ export default function UsersTable({
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
 
   useEffect(() => {
-    if (availableRoles.length > 0 && !provisionForm.role) {
+    if (assignableRoles.length > 0 && !provisionForm.role) {
       setProvisionForm(prev => ({
         ...prev,
-        role: availableRoles.includes("school_admin") ? "school_admin" : availableRoles[0]
+        role: assignableRoles.includes("school_admin") ? "school_admin" : assignableRoles[0]
       }));
     }
-  }, [availableRoles, provisionForm.role]);
+  }, [assignableRoles, provisionForm.role]);
 
   useEffect(() => {
     // Fetch available permissions
@@ -188,6 +225,10 @@ export default function UsersTable({
   const fetchUsers = async () => {
     try {
       setLoading(true);
+      const isGlobalAdmin = currentUser?.role === "super_admin" || currentUser?.role === "emis_admin";
+      const regionParam = isGlobalAdmin ? "" : (currentUser?.region || "");
+      const subRegionParam = isGlobalAdmin ? "" : (currentUser?.sub_region && currentUser.sub_region !== "All" ? currentUser.sub_region : "");
+
       const params = new URLSearchParams({
         page: page.toString(),
         limit: limit.toString(),
@@ -195,7 +236,9 @@ export default function UsersTable({
         role: roleFilter,
         status: statusFilter,
         sortBy,
-        sortOrder
+        sortOrder,
+        region: regionParam,
+        sub_region: subRegionParam
       });
 
       const res = await fetch(`/api/users?${params.toString()}`);
@@ -431,6 +474,8 @@ export default function UsersTable({
           role: editModal.user.role,
           status: editModal.user.status,
           region: editModal.user.region,
+          sub_region: editModal.user.sub_region,
+          school: editModal.user.school,
           permissions: editPermissions
         })
       });
@@ -511,8 +556,10 @@ export default function UsersTable({
           username: "",
           email: "",
           full_name: "",
-          role: availableRoles.includes("school_admin") ? "school_admin" : (availableRoles[0] || ""),
-          region: "All",
+          role: assignableRoles.includes("school_admin") ? "school_admin" : (assignableRoles[0] || ""),
+          region: initialRegion,
+          sub_region: initialSubRegion,
+          school: "",
           password: "",
           status: "Active"
         });
@@ -798,7 +845,7 @@ export default function UsersTable({
               className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 rounded-lg text-xs px-3 py-2 cursor-pointer focus:outline-none focus:ring-1 focus:ring-slate-900 dark:focus:ring-slate-700"
             >
               <option value="all">All Roles</option>
-              {availableRoles.map((r) => (
+              {assignableRoles.map((r) => (
                 <option key={r} value={r}>
                   {r.split("_").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")}
                 </option>
@@ -949,7 +996,7 @@ export default function UsersTable({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
-                {users.map((sysUser) => {
+                {users.filter(u => assignableRoles.includes(u.role) || u.id === currentUser?.id).map((sysUser) => {
                   const isSelf = sysUser.id === currentUser?.id;
                   const isSuperAdmin = sysUser.username === "super_admin";
                   const isSelected = selectedIds.includes(sysUser.id);
@@ -1043,7 +1090,13 @@ export default function UsersTable({
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
                           <MapPin className="h-3.5 w-3.5 text-slate-400" />
-                          {sysUser.region === "All" ? "All Regions" : `${sysUser.region} Region`}
+                          {sysUser.role === "super_admin" || sysUser.role === "emis_admin" 
+                            ? "All Regions" 
+                            : sysUser.role === "school_admin" || sysUser.role === "teacher"
+                              ? (sysUser.school || "Unassigned School")
+                              : sysUser.role === "sub_regional_admin"
+                                ? `${sysUser.sub_region !== "All" && sysUser.sub_region ? sysUser.sub_region : sysUser.region} Sub-region`
+                                : `${sysUser.region} Region`}
                         </span>
                       </td>
 
@@ -1348,7 +1401,7 @@ export default function UsersTable({
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
               <div>
                 <label className="block font-semibold text-slate-600 dark:text-slate-400 mb-1">Assigned Role</label>
                 <select
@@ -1357,14 +1410,22 @@ export default function UsersTable({
                     const newRole = e.target.value;
                     const newRolePerms = rolePermissions[newRole] || [];
                     setEditPermissions(newRolePerms);
+                    const isMultiRegion = newRole === "super_admin" || newRole === "emis_admin";
+                    const defaultReg = isMultiRegion ? "All" : (editModal.user?.region !== "All" ? editModal.user?.region : "Central");
+                    const defaultSub = isMultiRegion ? "All" : (regionSubregions[defaultReg]?.[0] || "All");
                     setEditModal({
                       isOpen: true,
-                      user: { ...editModal.user!, role: newRole }
+                      user: {
+                        ...editModal.user!,
+                        role: newRole,
+                        region: defaultReg,
+                        sub_region: defaultSub
+                      }
                     });
                   }}
                   className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-lg cursor-pointer"
                 >
-                  {availableRoles.map((r) => (
+                  {assignableRoles.map((r) => (
                     <option key={r} value={r}>
                       {r.split("_").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")}
                     </option>
@@ -1376,22 +1437,85 @@ export default function UsersTable({
                 <label className="block font-semibold text-slate-600 dark:text-slate-400 mb-1">Scope Region</label>
                 <select
                   value={editModal.user.region}
+                  disabled={!isCurrentUserGlobalAdmin}
+                  onChange={(e) => {
+                    const regVal = e.target.value;
+                    const defaultSub = regVal === "All" ? "All" : (regionSubregions[regVal]?.[0] || "All");
+                    setEditModal({
+                      isOpen: true,
+                      user: {
+                        ...editModal.user!,
+                        region: regVal,
+                        sub_region: defaultSub
+                      }
+                    });
+                  }}
+                  className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-lg cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {!isCurrentUserGlobalAdmin && currentUser?.region ? (
+                    <option value={currentUser.region}>{currentUser.region}</option>
+                  ) : (
+                    <>
+                      {(editModal.user.role === "super_admin" || editModal.user.role === "emis_admin") && (
+                        <option value="All">All Regions</option>
+                      )}
+                      {availableRegions.filter(reg => reg !== "All").map((reg) => (
+                        <option key={reg} value={reg}>
+                          {reg}
+                        </option>
+                      ))}
+                    </>
+                  )}
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-600 dark:text-slate-400 mb-1">Scope Sub-region</label>
+                <select
+                  value={editModal.user.sub_region || "All"}
+                  disabled={editModal.user.region === "All" || (!isCurrentUserGlobalAdmin && currentUser?.sub_region && currentUser.sub_region !== "All")}
                   onChange={(e) =>
                     setEditModal({
                       isOpen: true,
-                      user: { ...editModal.user!, region: e.target.value }
+                      user: {
+                        ...editModal.user!,
+                        sub_region: e.target.value
+                      }
                     })
                   }
-                  className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-lg cursor-pointer"
+                  className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-lg cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <option value="All">All Regions</option>
-                  {availableRegions.map((reg) => (
-                    <option key={reg} value={reg}>
-                      {reg}
-                    </option>
-                  ))}
+                  {editModal.user.region === "All" ? (
+                    <option value="All">All Sub-regions</option>
+                  ) : !isCurrentUserGlobalAdmin && currentUser?.sub_region && currentUser.sub_region !== "All" ? (
+                    <option value={currentUser.sub_region}>{currentUser.sub_region}</option>
+                  ) : (
+                    (regionSubregions[editModal.user.region] || []).map((sub) => (
+                      <option key={sub} value={sub}>
+                        {sub}
+                      </option>
+                    ))
+                  )}
                 </select>
               </div>
+
+              {(editModal.user.role === "school_admin" || editModal.user.role === "teacher") && (
+                <div>
+                  <label className="block font-semibold text-slate-600 dark:text-slate-400 mb-1">Scope School</label>
+                  <input
+                    type="text"
+                    value={editModal.user.school || ""}
+                    onChange={(e) =>
+                      setEditModal({
+                        isOpen: true,
+                        user: { ...editModal.user!, school: e.target.value }
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-lg"
+                    placeholder="Enter school name"
+                  />
+                </div>
+              )}
 
               <div>
                 <label className="block font-semibold text-slate-600 dark:text-slate-400 mb-1">Account State</label>
@@ -1562,9 +1686,16 @@ export default function UsersTable({
                 </span>
               </div>
               <div className="bg-slate-50/50 dark:bg-slate-950/20 p-2.5 rounded-lg border border-slate-100 dark:border-slate-800">
-                <span className="text-[10px] text-slate-500 block uppercase font-semibold">Region</span>
+                <span className="text-[10px] text-slate-500 block uppercase font-semibold">Scope</span>
                 <span className="font-medium flex items-center gap-1 mt-0.5">
-                  <MapPin className="h-3.5 w-3.5 text-blue-500" /> {viewModal.user.region} Region
+                  <MapPin className="h-3.5 w-3.5 text-blue-500" />
+                  {viewModal.user.role === "super_admin" || viewModal.user.role === "emis_admin" 
+                    ? "All Regions" 
+                    : viewModal.user.role === "school_admin" || viewModal.user.role === "teacher"
+                      ? (viewModal.user.school || "Unassigned School")
+                      : viewModal.user.role === "sub_regional_admin"
+                        ? `${viewModal.user.sub_region !== "All" && viewModal.user.sub_region ? viewModal.user.sub_region : viewModal.user.region} Sub-region`
+                        : `${viewModal.user.region} Region`}
                 </span>
               </div>
             </div>
@@ -1788,7 +1919,7 @@ export default function UsersTable({
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
               <div>
                 <label className="block font-semibold text-slate-600 dark:text-slate-400 mb-1">Assigned Role</label>
                 <select
@@ -1799,15 +1930,20 @@ export default function UsersTable({
                       setIsCustomRole(true);
                     } else {
                       setIsCustomRole(false);
+                      const isMultiRegion = val === "super_admin" || val === "emis_admin";
+                      const defaultReg = isMultiRegion ? "All" : "Central";
+                      const defaultSub = isMultiRegion ? "All" : "Serowe";
                       setProvisionForm({
                         ...provisionForm,
-                        role: val
+                        role: val,
+                        region: defaultReg,
+                        sub_region: defaultSub
                       });
                     }
                   }}
                   className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-lg cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500"
                 >
-                  {availableRoles.map((r) => (
+                  {assignableRoles.map((r) => (
                     <option key={r} value={r}>
                       {r.split("_").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")}
                     </option>
@@ -1820,22 +1956,79 @@ export default function UsersTable({
                 <label className="block font-semibold text-slate-600 dark:text-slate-400 mb-1">Scope Region</label>
                 <select
                   value={provisionForm.region}
+                  disabled={!isCurrentUserGlobalAdmin}
+                  onChange={(e) => {
+                    const regVal = e.target.value;
+                    const defaultSub = regVal === "All" ? "All" : (regionSubregions[regVal]?.[0] || "All");
+                    setProvisionForm({
+                      ...provisionForm,
+                      region: regVal,
+                      sub_region: defaultSub
+                    });
+                  }}
+                  className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-lg cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {!isCurrentUserGlobalAdmin && currentUser?.region ? (
+                    <option value={currentUser.region}>{currentUser.region}</option>
+                  ) : (
+                    <>
+                      {(provisionForm.role === "super_admin" || provisionForm.role === "emis_admin") && (
+                        <option value="All">All Regions</option>
+                      )}
+                      {availableRegions.filter(reg => reg !== "All").map((reg) => (
+                        <option key={reg} value={reg}>
+                          {reg}
+                        </option>
+                      ))}
+                    </>
+                  )}
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-600 dark:text-slate-400 mb-1">Scope Sub-region</label>
+                <select
+                  value={provisionForm.sub_region}
+                  disabled={provisionForm.region === "All" || (!isCurrentUserGlobalAdmin && currentUser?.sub_region && currentUser.sub_region !== "All")}
                   onChange={(e) =>
                     setProvisionForm({
                       ...provisionForm,
-                      region: e.target.value
+                      sub_region: e.target.value
                     })
                   }
-                  className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-lg cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-lg cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <option value="All">All Regions</option>
-                  {availableRegions.map((reg) => (
-                    <option key={reg} value={reg}>
-                      {reg}
-                    </option>
-                  ))}
+                  {provisionForm.region === "All" ? (
+                    <option value="All">All Sub-regions</option>
+                  ) : !isCurrentUserGlobalAdmin && currentUser?.sub_region && currentUser.sub_region !== "All" ? (
+                    <option value={currentUser.sub_region}>{currentUser.sub_region}</option>
+                  ) : (
+                    (regionSubregions[provisionForm.region] || []).map((sub) => (
+                      <option key={sub} value={sub}>
+                        {sub}
+                      </option>
+                    ))
+                  )}
                 </select>
               </div>
+
+              {(provisionForm.role === "school_admin" || provisionForm.role === "teacher") && (
+                <div>
+                  <label className="block font-semibold text-slate-600 dark:text-slate-400 mb-1">Scope School</label>
+                  <input
+                    type="text"
+                    value={(provisionForm as any).school || ""}
+                    onChange={(e) =>
+                      setProvisionForm({
+                        ...provisionForm,
+                        school: e.target.value
+                      } as any)
+                    }
+                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-lg"
+                    placeholder="Enter school name"
+                  />
+                </div>
+              )}
 
               <div>
                 <label className="block font-semibold text-slate-600 dark:text-slate-400 mb-1">Account State</label>

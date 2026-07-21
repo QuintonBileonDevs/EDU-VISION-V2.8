@@ -16,14 +16,14 @@ export async function GET(req: NextRequest, props: { params: Promise<{ id: strin
       query = `
         SELECT u.user_id AS id, u.username, u.email, u.full_name, u.phone_number, 
                r.role_name AS role, r.role_display_name, u.is_active, u.created_at, u.deleted_at,
-               COALESCE(u.region, 'All') AS region
+               COALESCE(u.region, 'All') AS region, COALESCE(u.sub_region, 'All') AS sub_region, u.school
         FROM \`users\` u
         LEFT JOIN \`roles\` r ON u.role_id = r.role_id
         WHERE u.user_id = ?
       `;
     } else {
       query = `
-        SELECT id, username, email, full_name, role, status, region, last_login, created_at, deleted_at
+        SELECT id, username, email, full_name, role, status, region, COALESCE(sub_region, 'All') AS sub_region, school, last_login, created_at, deleted_at
         FROM \`users\`
         WHERE id = ?
       `;
@@ -45,7 +45,7 @@ export async function PUT(req: NextRequest, props: { params: Promise<{ id: strin
   try {
     const { id } = await props.params;
     const body = await req.json();
-    const { username, email, full_name, role, status, region, phone_number, permissions } = body;
+    const { username, email, full_name, role, status, region, sub_region, school, phone_number, permissions } = body;
 
     const currentUserId = parseInt(req.headers.get("x-user-id") || "1", 10);
 
@@ -109,6 +109,14 @@ export async function PUT(req: NextRequest, props: { params: Promise<{ id: strin
     if (region !== undefined) {
       updates.push("`region` = ?");
       params.push(region);
+    }
+    if (sub_region !== undefined) {
+      updates.push("`sub_region` = ?");
+      params.push(sub_region);
+    }
+    if (school !== undefined) {
+      updates.push("`school` = ?");
+      params.push(school);
     }
 
     if (updates.length > 0) {

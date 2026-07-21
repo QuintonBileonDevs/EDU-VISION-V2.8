@@ -13,6 +13,8 @@ export async function GET(req: NextRequest) {
     const status = searchParams.get("status") || "all";
     const sortBy = searchParams.get("sortBy") || "username";
     const sortOrder = searchParams.get("sortOrder") || "asc";
+    const region = searchParams.get("region") || "";
+    const sub_region = searchParams.get("sub_region") || "";
 
     const offset = (page - 1) * limit;
 
@@ -44,6 +46,26 @@ export async function GET(req: NextRequest) {
         whereClauses.push("role = ?");
       }
       params.push(role);
+    }
+
+    // Region filter
+    if (region && region !== "all" && region !== "All") {
+      if (schema === "legacy") {
+        whereClauses.push("u.region = ?");
+      } else {
+        whereClauses.push("region = ?");
+      }
+      params.push(region);
+    }
+
+    // Sub-region filter
+    if (sub_region && sub_region !== "all" && sub_region !== "All") {
+      if (schema === "legacy") {
+        whereClauses.push("u.sub_region = ?");
+      } else {
+        whereClauses.push("sub_region = ?");
+      }
+      params.push(sub_region);
     }
 
     // Status / Deleted filter
@@ -95,7 +117,8 @@ export async function GET(req: NextRequest) {
       query = `
         SELECT u.user_id AS id, u.username, u.email, u.full_name, u.phone_number,
                r.role_name AS role, r.role_display_name, IF(u.is_active = 1, 'Active', 'Inactive') AS status,
-               u.is_active, COALESCE(u.region, 'All') AS region, DATE_FORMAT(u.last_login_at, '%Y-%m-%d %H:%i:%s') as last_login,
+               u.is_active, COALESCE(u.region, 'All') AS region, COALESCE(u.sub_region, 'All') AS sub_region, u.school,
+               DATE_FORMAT(u.last_login_at, '%Y-%m-%d %H:%i:%s') as last_login,
                u.created_at, u.deleted_at
         FROM \`users\` u
         LEFT JOIN \`roles\` r ON u.role_id = r.role_id
@@ -111,7 +134,7 @@ export async function GET(req: NextRequest) {
       `;
     } else {
       query = `
-        SELECT id, username, email, full_name, role, status, region, 
+        SELECT id, username, email, full_name, role, status, region, COALESCE(sub_region, 'All') AS sub_region, school,
                DATE_FORMAT(last_login, '%Y-%m-%d %H:%i:%s') as last_login, created_at, deleted_at
         FROM \`users\`
         ${whereStr}
@@ -261,7 +284,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const { username, email, full_name, role, region, password, status, permissions } = await req.json();
+    const { username, email, full_name, role, region, sub_region, school, password, status, permissions } = await req.json();
 
     if (!username || !email || !full_name || !role || !password) {
       return NextResponse.json(
@@ -273,6 +296,8 @@ export async function POST(req: NextRequest) {
     const hashed = sha256(password);
     const userStatus = status || "Active";
     const userRegion = region || "All";
+    const userSubRegion = sub_region || "All";
+    const userSchool = school || null;
 
     await initializeDatabase();
     const db = getDbPool();
@@ -347,8 +372,8 @@ export async function POST(req: NextRequest) {
       }
 
       [result] = await db.query(
-        "INSERT INTO `users` (`username`, `password_hash`, `email`, `full_name`, `role_id`, `is_active`, `region`) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        [username.trim(), hashed, email.trim(), full_name.trim(), roleId, isActiveVal, userRegion]
+        "INSERT INTO `users` (`username`, `password_hash`, `email`, `full_name`, `role_id`, `is_active`, `region`, `sub_region`, `school`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        [username.trim(), hashed, email.trim(), full_name.trim(), roleId, isActiveVal, userRegion, userSubRegion, userSchool]
       );
       
       if (isNewRole && permissions && Array.isArray(permissions) && permissions.length > 0) {
@@ -357,8 +382,8 @@ export async function POST(req: NextRequest) {
             const [pRows]: any = await db.query("SELECT permission_id FROM `permissions` WHERE permission_name = ?", [p]);
             if (pRows && pRows.length > 0) {
               await db.query(
-                "INSERT INTO `role_permissions` (`role`, `permission_id`, `role_id`) VALUES (?, ?, ?)",
-                [cleanRoleName, pRows[0].permission_id, roleId]
+                "INSERT INTO `role_permissions` (`role`, `permission_id`) VALUES (?, ?)",
+                [cleanRoleName, pRows[0].permission_id]
               );
             }
           }
@@ -368,8 +393,8 @@ export async function POST(req: NextRequest) {
       }
     } else {
       [result] = await db.query(
-        "INSERT INTO `users` (`username`, `password_hash`, `email`, `full_name`, `role`, `status`, `region`) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        [username.trim(), hashed, email.trim(), full_name.trim(), role, userStatus, userRegion]
+        "INSERT INTO `users` (`username`, `password_hash`, `email`, `full_name`, `role`, `status`, `region`, `sub_region`, `school`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        [username.trim(), hashed, email.trim(), full_name.trim(), role, userStatus, userRegion, userSubRegion, userSchool]
       );
       
       if (permissions && Array.isArray(permissions) && permissions.length > 0) {
@@ -421,7 +446,7 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: "User ID is required" }, { status: 400 });
     }
 
-    const { full_name, role, region, status, password } = await req.json();
+    const { full_name, role, region, sub_region, school, status, password } = await req.json();
 
     await initializeDatabase();
     const db = getDbPool();
@@ -469,6 +494,14 @@ export async function PUT(req: NextRequest) {
     if (region !== undefined) {
       updates.push("`region` = ?");
       params.push(region);
+    }
+    if (sub_region !== undefined) {
+      updates.push("`sub_region` = ?");
+      params.push(sub_region);
+    }
+    if (school !== undefined) {
+      updates.push("`school` = ?");
+      params.push(school);
     }
     if (status !== undefined) {
       if (schema === "legacy") {

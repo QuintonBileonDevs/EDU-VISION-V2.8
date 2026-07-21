@@ -41,6 +41,72 @@ export async function GET(req: NextRequest) {
     
     const [[{ c: healthAvg }]]: any = await db.query("SELECT AVG(metric_value) as c FROM system_health_metrics WHERE metric_name='uptime'");
     
+    let schoolCount = 0;
+    let studentCount = 0;
+    let staffCount = 0;
+    let userCount = 0;
+
+    try {
+      const [[{ c: sC }]]: any = await db.query("SELECT COUNT(*) as c FROM schools WHERE deleted_at IS NULL");
+      schoolCount = sC;
+    } catch (e) {
+      try {
+        const [[{ c: sC }]]: any = await db.query("SELECT COUNT(*) as c FROM schools");
+        schoolCount = sC;
+      } catch (err) {
+        console.error("Error querying schools count:", err);
+      }
+    }
+
+    try {
+      const [[{ c: stC }]]: any = await db.query("SELECT COUNT(*) as c FROM students WHERE deleted_at IS NULL");
+      studentCount = stC;
+    } catch (e) {
+      try {
+        const [[{ c: stC }]]: any = await db.query("SELECT COUNT(*) as c FROM students");
+        studentCount = stC;
+      } catch (err) {
+        console.error("Error querying students count:", err);
+      }
+    }
+
+    try {
+      const [[{ c: sfC }]]: any = await db.query("SELECT COUNT(*) as c FROM staff WHERE deleted_at IS NULL");
+      staffCount = sfC;
+    } catch (e) {
+      try {
+        const [[{ c: sfC }]]: any = await db.query("SELECT COUNT(*) as c FROM staff");
+        staffCount = sfC;
+      } catch (err) {
+        console.error("Error querying staff count:", err);
+      }
+    }
+
+    try {
+      const [[{ c: uC }]]: any = await db.query("SELECT COUNT(*) as c FROM users WHERE deleted_at IS NULL");
+      userCount = uC;
+    } catch (e) {
+      try {
+        const [[{ c: uC }]]: any = await db.query("SELECT COUNT(*) as c FROM users");
+        userCount = uC;
+      } catch (err) {
+        console.error("Error querying users count:", err);
+      }
+    }
+
+    let regionCount = 0;
+    try {
+      const [[{ c: rC }]]: any = await db.query("SELECT COUNT(DISTINCT region_id) as c FROM schools WHERE deleted_at IS NULL");
+      regionCount = rC;
+    } catch (e) {
+      try {
+        const [[{ c: rC }]]: any = await db.query("SELECT COUNT(DISTINCT region_id) as c FROM schools");
+        regionCount = rC;
+      } catch (err) {
+        console.error("Error querying region count:", err);
+      }
+    }
+    
     // Merge calculated analytics into config for frontend compatibility if needed
     // But it's better to send them separately
     
@@ -72,6 +138,11 @@ export async function GET(req: NextRequest) {
         alertCount: alertCount || 0,
         errorCount: errorCount || 0,
         healthAvg: healthAvg || 99.9,
+        schoolCount: schoolCount || 0,
+        studentCount: studentCount || 0,
+        staffCount: staffCount || 0,
+        userCount: userCount || 0,
+        regionCount: regionCount || 0,
       }
     });
   } catch (error: any) {

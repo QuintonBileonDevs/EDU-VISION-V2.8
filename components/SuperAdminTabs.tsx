@@ -21,7 +21,7 @@ export function SuperAdminOverview() {
     setMounted(true);
   }, []);
 
-  const c = data?.counts || { sessionCount: 0, alertCount: 0, errorCount: 0, healthAvg: 0 };
+  const c = data?.counts || { sessionCount: 0, alertCount: 0, errorCount: 0, healthAvg: 0, schoolCount: 0, studentCount: 0, staffCount: 0, userCount: 0, regionCount: 0 };
   
   // Mock data for trends
   const trendData = [
@@ -34,11 +34,18 @@ export function SuperAdminOverview() {
     { name: 'Sun', active: 430, errors: 12 },
   ];
 
-  const distributionData = [
-    { name: 'Students', value: 45, color: '#6366f1' },
-    { name: 'Teachers', value: 25, color: '#10b981' },
-    { name: 'Schools', value: 20, color: '#f59e0b' },
-    { name: 'Admins', value: 10, color: '#8b5cf6' },
+  const totalRecords = (c.studentCount || 0) + (c.staffCount || 0) + (c.schoolCount || 0) + (c.userCount || 0);
+
+  const distributionData = totalRecords > 0 ? [
+    { name: 'Students', value: Math.round(((c.studentCount || 0) / totalRecords) * 100), count: c.studentCount || 0, color: '#6366f1' },
+    { name: 'Teachers & Staff', value: Math.round(((c.staffCount || 0) / totalRecords) * 100), count: c.staffCount || 0, color: '#10b981' },
+    { name: 'Schools', value: Math.round(((c.schoolCount || 0) / totalRecords) * 100), count: c.schoolCount || 0, color: '#f59e0b' },
+    { name: 'Admins & Users', value: Math.round(((c.userCount || 0) / totalRecords) * 100), count: c.userCount || 0, color: '#8b5cf6' },
+  ] : [
+    { name: 'Students', value: 45, count: 450, color: '#6366f1' },
+    { name: 'Teachers & Staff', value: 25, count: 250, color: '#10b981' },
+    { name: 'Schools', value: 20, count: 200, color: '#f59e0b' },
+    { name: 'Admins & Users', value: 10, count: 100, color: '#8b5cf6' },
   ];
 
   if (loading) {
@@ -62,7 +69,7 @@ export function SuperAdminOverview() {
           </div>
           <p className="text-slate-300 max-w-2xl leading-relaxed">
             Welcome back, Super Administrator. The national education database is currently operating within normal parameters. 
-            Monitoring <span className="text-blue-400 font-bold">1,240 schools</span> across <span className="text-emerald-400 font-bold">12 regions</span>.
+            Monitoring <span className="text-blue-400 font-bold">{c.schoolCount || "1,240"} schools</span> across <span className="text-emerald-400 font-bold">{c.regionCount || "12"} regions</span>.
           </p>
           <div className="flex flex-wrap gap-4 mt-6">
             <div className="flex items-center gap-2 bg-white/5 backdrop-blur-sm px-4 py-2 rounded-full border border-white/10 text-xs font-semibold">
@@ -248,7 +255,7 @@ export function SuperAdminOverview() {
                     <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
                     <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">{item.name}</span>
                   </div>
-                  <span className="text-xs font-bold dark:text-white">{item.value}%</span>
+                  <span className="text-xs font-bold dark:text-white">{item.count} ({item.value}%)</span>
                 </div>
               ))}
             </div>
@@ -1981,34 +1988,173 @@ export function SuperAdminAcademic() {
   );
 }
 
-export function SuperAdminRegions() {
+export function SuperAdminRegions({ currentUser }: { currentUser?: any }) {
+  const userRegion = currentUser?.region && currentUser.region !== "All" ? currentUser.region : null;
+  const [selectedRegion, setSelectedRegion] = useState<string>(userRegion || "Central");
+  const [schools, setSchools] = useState<any[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [searchTerm, setSearchTerm] = useState<string>("");
+
+  const regionSubregions: Record<string, string[]> = {
+    "Central": ["Serowe", "Palapye", "Mahalapye", "Bobonong", "Tutume"],
+    "Chobe": ["Kasane", "Pandamatenga"],
+    "Gantsi": ["Ghanzi", "Charles Hill"],
+    "Kgalagadi": ["Tshabong", "Hukuntsi"],
+    "Kgatleng": ["Mochudi", "Artesia"],
+    "Kweneng": ["Molepolole", "Letlhakeng"],
+    "North East": ["Masunga", "Francistown"],
+    "North West": ["Maun", "Gumare", "Shakawe"],
+    "South": ["Kanye", "Moshupa", "Goodhope"],
+    "South East": ["Gaborone", "Ramotswa", "Tlokweng"]
+  };
+
+  const userSubRegion = currentUser?.sub_region && currentUser.sub_region !== "All" ? currentUser.sub_region : null;
+  const subregions = userSubRegion
+    ? (regionSubregions[selectedRegion] || []).filter(sr => sr.toLowerCase() === userSubRegion.toLowerCase())
+    : (regionSubregions[selectedRegion] || []);
+
+  const fetchSchools = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/regional-admin/dashboard?region=${encodeURIComponent(selectedRegion)}`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success) {
+          setSchools(json.schoolsList || []);
+        }
+      }
+    } catch (e) {
+      console.error("Error fetching schools for region:", e);
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedRegion]);
+
+  useEffect(() => {
+    fetchSchools();
+  }, [fetchSchools]);
+
+  const filteredSchools = schools.filter(s => {
+    const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          s.sub_district.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSubRegion = userSubRegion
+      ? s.sub_district.toLowerCase() === userSubRegion.toLowerCase()
+      : true;
+    return matchesSearch && matchesSubRegion;
+  });
+
   return (
     <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm p-6 animate-fadeIn">
-      <h3 className="text-lg font-bold mb-4 dark:text-white">School & Region Management</h3>
-      <p className="text-slate-500 text-sm mb-6">Manage educational regions, sub-regions, and pending school registrations.</p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+        <div>
+          <h3 className="text-lg font-bold dark:text-white">School & Region Management</h3>
+          <p className="text-slate-500 text-sm mt-1">
+            {userRegion ? `Viewing subregions and schools for your assigned ${selectedRegion} Region.` : "Manage educational regions, subregions, and registrations."}
+          </p>
+        </div>
+
+        {/* Region Selector */}
+        {!userRegion && (
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-slate-500">Region:</span>
+            <select
+              value={selectedRegion}
+              onChange={(e) => setSelectedRegion(e.target.value)}
+              className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer outline-none"
+            >
+              {Object.keys(regionSubregions).map(reg => (
+                <option key={reg} value={reg}>{reg}</option>
+              ))}
+            </select>
+          </div>
+        )}
+      </div>
       
-      <div className="grid grid-cols-2 gap-6">
-        <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
-          <div className="bg-slate-50 dark:bg-slate-950 px-4 py-3 border-b border-slate-200 dark:border-slate-800">
-            <h4 className="font-semibold text-sm dark:text-white">Regions</h4>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Left Column: Sub-regions */}
+        <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-slate-50/50 dark:bg-slate-950/20">
+          <div className="bg-slate-50 dark:bg-slate-950 px-4 py-3 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center">
+            <h4 className="font-semibold text-sm dark:text-white">
+              {selectedRegion} Region Sub-regions ({subregions.length})
+            </h4>
+            {userRegion && (
+              <span className="px-2 py-0.5 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 text-[10px] font-bold rounded border border-blue-100 dark:border-blue-900/30 flex items-center gap-1">
+                <Lock className="h-2.5 w-2.5" /> Locked to Assigned Region
+              </span>
+            )}
           </div>
           <ul className="divide-y divide-slate-100 dark:divide-slate-800">
-            {['South Region', 'Central Region', 'North Region'].map(region => (
-              <li key={region} className="px-4 py-3 text-sm flex justify-between items-center hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                <span className="font-medium dark:text-slate-300">{region}</span>
-                <span className="text-xs text-slate-500">12 Sub-regions</span>
-              </li>
-            ))}
+            {subregions.map(subreg => {
+              const count = schools.filter(s => s.sub_district.toLowerCase() === subreg.toLowerCase()).length;
+              return (
+                <li key={subreg} className="px-4 py-3.5 text-sm flex justify-between items-center hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                  <span className="font-semibold text-slate-700 dark:text-slate-300">{subreg} Sub-district</span>
+                  <span className="text-xs text-slate-500 font-mono bg-white dark:bg-slate-900 border border-slate-250/20 px-2 py-1 rounded">
+                    {count} {count === 1 ? "school" : "schools"}
+                  </span>
+                </li>
+              );
+            })}
           </ul>
         </div>
 
-        <div className="border border-amber-200 dark:border-amber-900/50 rounded-xl overflow-hidden bg-amber-50/30 dark:bg-amber-950/10">
-          <div className="bg-amber-50 dark:bg-amber-950/30 px-4 py-3 border-b border-amber-100 dark:border-amber-900/50">
-            <h4 className="font-semibold text-sm text-amber-900 dark:text-amber-500">Pending School Registrations</h4>
+        {/* Right Column: Schools List */}
+        <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden flex flex-col bg-white dark:bg-slate-900">
+          <div className="bg-slate-50 dark:bg-slate-950 px-4 py-3 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <h4 className="font-semibold text-sm dark:text-white">
+              Schools in {selectedRegion} Region ({schools.length})
+            </h4>
+            
+            <div className="relative">
+              <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search schools..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-8 pr-3 py-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs outline-none focus:ring-1 focus:ring-blue-500 w-full sm:w-40"
+              />
+            </div>
           </div>
-          <div className="p-8 flex flex-col items-center justify-center text-center">
-            <CheckCircle className="w-8 h-8 text-amber-400 mb-2" />
-            <p className="text-sm text-amber-800 dark:text-amber-600">All school registrations have been approved.</p>
+
+          <div className="overflow-y-auto max-h-96 divide-y divide-slate-100 dark:divide-slate-800">
+            {loading ? (
+              <div className="p-8 flex flex-col items-center justify-center text-center gap-2">
+                <RefreshCw className="h-6 w-6 animate-spin text-blue-500" />
+                <p className="text-xs text-slate-500">Querying regional school list...</p>
+              </div>
+            ) : filteredSchools.length === 0 ? (
+              <div className="p-8 text-center text-slate-400 text-xs">
+                No schools found in this region matching search criteria.
+              </div>
+            ) : (
+              filteredSchools.map(school => (
+                <div key={school.id} className="p-4 flex justify-between items-center hover:bg-slate-50 dark:hover:bg-slate-800/30 transition duration-150">
+                  <div className="space-y-1">
+                    <h5 className="font-bold text-sm text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                      <School className="h-3.5 w-3.5 text-blue-500" />
+                      {school.name}
+                    </h5>
+                    <p className="text-[11px] text-slate-400 flex items-center gap-1">
+                      <span>{school.sub_district}</span>
+                      <span>•</span>
+                      <span>{school.level}</span>
+                      <span>•</span>
+                      <span>{school.type}</span>
+                    </p>
+                  </div>
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                    school.status === "Complete" 
+                      ? "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30"
+                      : school.status === "Partial"
+                      ? "bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-900/30"
+                      : "bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-900/30"
+                  }`}>
+                    {school.status} ({school.completion_percentage}%)
+                  </span>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>
